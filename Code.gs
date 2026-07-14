@@ -61,14 +61,19 @@ function processarPdf(base64Data, nomeArquivo) {
 }
 
 /**
+ * Função morta apenas para forçar o Apps Script a pedir permissão total
+ * ao Google Drive durante o fluxo de autorização do usuário,
+ * garantindo que a chamada à Drive API v3 funcione sem erros.
+ */
+function _forcarPermissoesDrive() {
+  DriveApp.getRootFolder();
+}
+
+/**
  * Converte o blob do PDF em texto usando a Drive API v3 via UrlFetchApp.
  * Isso evita a necessidade de habilitar o serviço avançado do Drive manualmente.
  */
 function extrairTextoDoPdf(blob) {
-  // Chamada fantasma ao DriveApp para forçar o Apps Script a
-  // pedir as permissões de escopo do Drive no momento da autorização
-  DriveApp.getRootFolder();
-
   const metadados = {
     name: 'temp_extracao_' + new Date().getTime(),
     mimeType: MimeType.GOOGLE_DOCS
@@ -92,7 +97,10 @@ function extrairTextoDoPdf(blob) {
   const response = UrlFetchApp.fetch(url, options);
 
   if (response.getResponseCode() !== 200) {
-    throw new Error('Erro na API do Drive: ' + response.getContentText());
+    if (response.getResponseCode() === 401 || response.getResponseCode() === 403) {
+      throw new Error('Permissão negada. Você precisa autorizar o script novamente ou atualizar a implantação (Deploy) para usar os escopos do Google Drive.');
+    }
+    throw new Error('Erro na API do Drive (' + response.getResponseCode() + '): ' + response.getContentText());
   }
 
   const arquivo = JSON.parse(response.getContentText());
