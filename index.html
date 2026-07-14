@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --azul: #0b5ed7;
+      --azul-escuro: #084298;
+      --verde: #198754;
+      --cinza-bg: #f4f6f9;
+      --cinza-borda: #dde2e8;
+      --texto: #1c2733;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--cinza-bg);
+      margin: 0;
+      padding: 24px;
+      color: var(--texto);
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+    }
+    header p {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: #6b7684;
+    }
+    .badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--azul);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .card {
+      background: white;
+      border: 1px solid var(--cinza-borda);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+    }
+    .upload-zone {
+      border: 2px dashed var(--cinza-borda);
+      border-radius: 10px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--azul);
+      background: #f0f6ff;
+    }
+    .upload-zone svg { margin-bottom: 8px; }
+    .upload-zone p { margin: 4px 0; font-size: 14px; }
+    .upload-zone .sub { color: #8a94a1; font-size: 12px; }
+    #fileInput { display: none; }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .btn-primary { background: var(--azul); color: white; }
+    .btn-primary:hover { background: var(--azul-escuro); }
+    .btn-success { background: var(--verde); color: white; }
+    .btn-success:hover { background: #157347; }
+    .btn-outline {
+      background: white;
+      border: 1px solid var(--cinza-borda);
+      color: var(--texto);
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #cdd7e3;
+      border-top-color: var(--azul);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .meta-row {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .meta-row div strong { display: block; font-size: 12px; color: #6b7684; font-weight: 600; }
+
+    .alerta {
+      background: #fff7e6;
+      border: 1px solid #ffd591;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+    }
+    .alerta.erro { background: #fef0f0; border-color: #ffc1c1; }
+    .alerta.sucesso { background: #edf9f0; border-color: #b7e4c7; }
+
+    table.preview {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    table.preview th {
+      background: #f7f9fb;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 2px solid var(--cinza-borda);
+      position: sticky;
+      top: 0;
+      white-space: nowrap;
+    }
+    table.preview td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #eef1f4;
+      vertical-align: top;
+    }
+    table.preview td[contenteditable="true"] {
+      cursor: text;
+      min-width: 90px;
+    }
+    table.preview td[contenteditable="true"]:focus {
+      background: #fffbe6;
+      outline: 2px solid #ffd591;
+      outline-offset: -2px;
+    }
+    .table-scroll {
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid var(--cinza-borda);
+      border-radius: 8px;
+    }
+    .col-nome { min-width: 160px; }
+    .col-leito { min-width: 70px; }
+    .actions-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+    }
+    .hint {
+      font-size: 12px;
+      color: #8a94a1;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">HUC</div>
+      <div>
+        <h1>Automação de Prescrição Dietética</h1>
+        <p>Envie o PDF do setor e revise antes de gravar na planilha</p>
+      </div>
+    </header>
+
+    <!-- ETAPA 1: UPLOAD -->
+    <div class="card" id="cardUpload">
+      <div class="upload-zone" id="uploadZone">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0b5ed7" stroke-width="1.6">
+          <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p><strong>Clique para escolher o PDF</strong> ou arraste aqui</p>
+        <p class="sub">Relatório de Prescrição Dietética baixado do sistema</p>
+      </div>
+      <input type="file" id="fileInput" accept="application/pdf">
+      <div class="status-bar hidden" id="statusBar">
+        <div class="spinner"></div>
+        <span id="statusText">Processando PDF...</span>
+      </div>
+      <div class="alerta erro hidden" id="alertaErro"></div>
+    </div>
+
+    <!-- ETAPA 2: PRÉVIA / REVISÃO -->
+    <div class="card hidden" id="cardPreview">
+      <div class="alerta">
+        ⚠️ <div>Confira os dados extraídos antes de gravar. Clique em qualquer célula para corrigir — a ordem das refeições pode precisar de ajuste em alguns pacientes.</div>
+      </div>
+
+      <div class="meta-row">
+        <div><strong>Clínica</strong><span id="metaClinica">—</span></div>
+        <div><strong>Data</strong><span id="metaData">—</span></div>
+        <div><strong>Pacientes identificados</strong><span id="metaTotal">—</span></div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="preview" id="tabelaPreview">
+          <thead>
+            <tr>
+              <th class="col-leito">Leito</th>
+              <th class="col-nome">Paciente</th>
+              <th>Diagnóstico / Dieta</th>
+              <th>Desjejum</th>
+              <th>Colação</th>
+              <th>Almoço</th>
+              <th>Lanche</th>
+              <th>Jantar</th>
+              <th>Ceia</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaBody"></tbody>
+        </table>
+      </div>
+
+      <div class="actions-footer">
+        <span class="hint">Edite diretamente na tabela se algo estiver fora do lugar</span>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-outline" onclick="cancelarPreview()">Cancelar</button>
+          <button class="btn btn-success" id="btnConfirmar" onclick="confirmarGravacao()">Confirmar e gravar na planilha</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ETAPA 3: SUCESSO -->
+    <div class="card hidden" id="cardSucesso">
+      <div class="alerta sucesso">
+        ✅ <div id="mensagemSucesso"></div>
+      </div>
+      <button class="btn btn-primary" onclick="location.reload()">Enviar outro PDF</button>
+    </div>
+  </div>
+
+  <script>
+    let dadosAtuais = null;
+
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        processarArquivo(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) processarArquivo(fileInput.files[0]);
+    });
+
+    function processarArquivo(arquivo) {
+      if (arquivo.type !== 'application/pdf') {
+        mostrarErro('Por favor, envie um arquivo PDF.');
+        return;
+      }
+
+      esconder('alertaErro');
+      mostrar('statusBar');
+      document.getElementById('statusText').textContent = 'Lendo o arquivo...';
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64 = e.target.result.split(',')[1];
+        document.getElementById('statusText').textContent = 'Extraindo dados do PDF (isso pode levar alguns segundos)...';
+
+        google.script.run
+          .withSuccessHandler(exibirPreview)
+          .withFailureHandler(erro => mostrarErro('Erro ao processar: ' + erro.message))
+          .processarPdf(base64, arquivo.name);
+      };
+      reader.readAsDataURL(arquivo);
+    }
+
+    function exibirPreview(resposta) {
+      esconder('statusBar');
+
+      if (!resposta.sucesso) {
+        mostrarErro(resposta.erro || 'Não foi possível extrair os dados.');
+        return;
+      }
+
+      dadosAtuais = resposta;
+
+      document.getElementById('metaClinica').textContent = resposta.clinica;
+      document.getElementById('metaData').textContent = resposta.data;
+      document.getElementById('metaTotal').textContent = resposta.totalPacientes;
+
+      const tbody = document.getElementById('tabelaBody');
+      tbody.innerHTML = '';
+
+      resposta.pacientes.forEach((p, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td contenteditable="true" data-idx="${idx}" data-campo="leito">${p.leito || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="nome" class="col-nome">${p.nome || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="diagnostico">${p.diagnostico || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="DESJEJUM">${p.refeicoes.DESJEJUM || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="COLACAO">${p.refeicoes.COLACAO || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="ALMOCO">${p.refeicoes.ALMOCO || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="LANCHE">${p.refeicoes.LANCHE || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="JANTAR">${p.refeicoes.JANTAR || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="CEIA">${p.refeicoes.CEIA || ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // captura edições feitas na tabela
+      tbody.addEventListener('blur', function(e) {
+        if (e.target.tagName === 'TD') {
+          const idx = e.target.dataset.idx;
+          const campo = e.target.dataset.campo;
+          const valor = e.target.textContent;
+
+          if (['leito', 'nome', 'diagnostico'].includes(campo)) {
+            dadosAtuais.pacientes[idx][campo] = valor;
+          } else {
+            dadosAtuais.pacientes[idx].refeicoes[campo] = valor;
+          }
+        }
+      }, true);
+
+      mostrar('cardPreview');
+    }
+
+    function cancelarPreview() {
+      esconder('cardPreview');
+      dadosAtuais = null;
+      fileInput.value = '';
+    }
+
+    function confirmarGravacao() {
+      const btn = document.getElementById('btnConfirmar');
+      btn.disabled = true;
+      btn.textContent = 'Gravando...';
+
+      google.script.run
+        .withSuccessHandler(resposta => {
+          esconder('cardPreview');
+          if (resposta.sucesso) {
+            document.getElementById('mensagemSucesso').textContent =
+              resposta.linhasGravadas + ' paciente(s) gravado(s) na planilha com sucesso.';
+            mostrar('cardSucesso');
+          } else {
+            mostrarErro(resposta.erro || 'Erro ao gravar na planilha.');
+            mostrar('cardPreview');
+          }
+          btn.disabled = false;
+          btn.textContent = 'Confirmar e gravar na planilha';
+        })
+        .withFailureHandler(erro => {
+          mostrarErro('Erro ao gravar: ' + erro.message);
+          btn.disabled = false;
+          btn.textContent = 'Confirmar e gravar na planilha';
+        })
+        .salvarNaPlanilha(dadosAtuais);
+    }
+
+    function mostrarErro(msg) {
+      const el = document.getElementById('alertaErro');
+      el.textContent = '⚠️ ' + msg;
+      mostrar('alertaErro');
+      esconder('statusBar');
+    }
+
+    function mostrar(id) { document.getElementById(id).classList.remove('hidden'); }
+    function esconder(id) { document.getElementById(id).classList.add('hidden'); }
+  </script>
+</body>
+</html>
