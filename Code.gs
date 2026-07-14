@@ -9,22 +9,12 @@
  * 4. Frontend mostra prévia EDITÁVEL para conferência
  * 5. Admin confirma -> grava na planilha (banco de dados)
  *
- * IMPORTANTE - CONFIGURAÇÃO NECESSÁRIA ANTES DE USAR:
- * 1. No editor do Apps Script: Serviços (ícone +) -> adicionar "Drive API"
- *    (isso habilita a conversão PDF -> texto via OCR do Google)
- * 2. Ajustar a constante SPREADSHEET_ID abaixo com o ID da planilha
- *    (pegue da URL: docs.google.com/spreadsheets/d/AQUI_O_ID/edit)
- * 3. Ajustar SHEET_NAME se sua aba tiver outro nome
- * 4. Ajustar a função salvarNaPlanilha() para bater com as colunas
- *    reais da sua planilha FATURAMENTO (hoje está com uma estrutura
- *    genérica que funciona, mas o ideal é você confirmar comigo as
- *    colunas exatas depois de testar)
+ * IMPORTANTE - INFORMAÇÕES DE USO:
+ * O script configura a planilha (cria aba 'Base' e cabeçalhos)
+ * no primeiro acesso automaticamente. Não é necessário
+ * configurar IDs ou habilitar a API do Drive manualmente.
  * ============================================================
  */
-
-// ---------- CONFIGURAÇÃO ----------
-const SPREADSHEET_ID = '1C4GzyQZV1syk1T-LDAvUeX7tAINyE-ASURxFmBN5QGU'; // TODO: ajustar
-const SHEET_NAME = 'Base'; // TODO: ajustar para o nome real da aba
 
 // Ordem das refeições como aparecem no cabeçalho do PDF
 const REFEICOES = ['DESJEJUM', 'COLACAO', 'ALMOCO', 'LANCHE', 'JANTAR', 'CEIA'];
@@ -71,25 +61,52 @@ function processarPdf(base64Data, nomeArquivo) {
 }
 
 /**
- * Converte o blob do PDF em texto usando o serviço avançado do Drive
- * (Drive API precisa estar habilitada em Serviços no editor do Apps Script)
+ * Converte o blob do PDF em texto usando a Drive API v3 via UrlFetchApp.
+ * Isso evita a necessidade de habilitar o serviço avançado do Drive manualmente.
  */
 function extrairTextoDoPdf(blob) {
-  const resource = {
-    title: 'temp_extracao_' + new Date().getTime(),
+  // Chamada fantasma ao DriveApp para forçar o Apps Script a
+  // pedir as permissões de escopo do Drive no momento da autorização
+  DriveApp.getRootFolder();
+
+  const metadados = {
+    name: 'temp_extracao_' + new Date().getTime(),
     mimeType: MimeType.GOOGLE_DOCS
   };
-  const options = {
-    ocr: true,
-    ocrLanguage: 'pt'
+
+  const formData = {
+    metadata: Utilities.newBlob(JSON.stringify(metadados), 'application/json'),
+    file: blob
   };
 
-  const arquivoTemp = Drive.Files.insert(resource, blob, options);
-  const doc = DocumentApp.openById(arquivoTemp.id);
+  const token = ScriptApp.getOAuthToken();
+  const options = {
+    method: 'post',
+    headers: { 'Authorization': 'Bearer ' + token },
+    payload: formData,
+    muteHttpExceptions: true
+  };
+
+  // Faz o upload com OCR via API do Google Drive
+  const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
+  const response = UrlFetchApp.fetch(url, options);
+
+  if (response.getResponseCode() !== 200) {
+    throw new Error('Erro na API do Drive: ' + response.getContentText());
+  }
+
+  const arquivo = JSON.parse(response.getContentText());
+
+  // Extrai o texto do documento criado
+  const doc = DocumentApp.openById(arquivo.id);
   const texto = doc.getBody().getText();
 
-  // limpa o arquivo temporário criado no Drive
-  Drive.Files.remove(arquivoTemp.id);
+  // Limpa o arquivo temporário
+  UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + arquivo.id, {
+    method: 'delete',
+    headers: { 'Authorization': 'Bearer ' + token },
+    muteHttpExceptions: true
+  });
 
   return texto;
 }
@@ -220,22 +237,39 @@ function parsearPacientes(texto) {
 // ============================================================
 // ETAPA 3: GRAVAR NA PLANILHA (após confirmação do admin)
 // ============================================================
+
+/**
+ * Garante que a aba 'Base' exista e tenha cabeçalho
+ */
+function garantirAbaConfigurada() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Base');
+
+  if (!sheet) {
+    sheet = ss.insertSheet('Base');
+    const cabecalho = [
+      'Data', 'Clínica', 'Leito', 'Prontuário', 'Nome do Paciente',
+      'Idade', 'Diagnóstico/Dieta', 'Desjejum', 'Colação', 'Almoço',
+      'Lanche', 'Jantar', 'Ceia'
+    ];
+    sheet.getRange(1, 1, 1, cabecalho.length).setValues([cabecalho]);
+    sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+
+    // Auto-ajustar algumas colunas
+    sheet.setColumnWidth(5, 250); // Nome
+    sheet.setColumnWidth(7, 200); // Diagnóstico
+  }
+  return sheet;
+}
+
 /**
  * Recebe os dados já revisados/corrigidos pelo admin no frontend
- * e grava uma linha por paciente na planilha.
- *
- * ATENÇÃO: ajustar a ordem/nome das colunas abaixo para bater
- * exatamente com a estrutura real da planilha FATURAMENTO.
- * Esta é uma estrutura genérica de exemplo.
+ * e grava uma linha por paciente na planilha vinculada.
  */
 function salvarNaPlanilha(dados) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_NAME);
-
-    if (!sheet) {
-      throw new Error('Aba "' + SHEET_NAME + '" não encontrada na planilha.');
-    }
+    const sheet = garantirAbaConfigurada();
 
     const linhas = dados.pacientes.map(p => [
       dados.data,
