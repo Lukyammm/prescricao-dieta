@@ -49,10 +49,21 @@ function processarPdf(base64Data, nomeArquivo) {
     const bytes = Utilities.base64Decode(base64Data);
     const blob = Utilities.newBlob(bytes, 'application/pdf', nomeArquivo);
 
-    const textoExtraido = extrairTextoDoPdf(blob);
-    const pacientes = parsearPacientes(textoExtraido);
-    const clinica = detectarClinica(textoExtraido);
-    const data = detectarData(textoExtraido);
+    const extraido = extrairDadosDoPdf(blob);
+
+    // Preferência: tabela nativa do Google Docs (linhas/células preservam a
+    // ordem real da grade). Só cai para o parsing por texto corrido — que
+    // depende de adivinhar a ordem de leitura do OCR e pode sair
+    // desalinhado — se o Google não reconheceu a tabela como tabela.
+    let pacientes = parsearPacientesDeTabela(extraido.tabela);
+    let modoExtracao = 'tabela';
+    if (pacientes.length === 0) {
+      pacientes = parsearPacientes(extraido.textoPlano);
+      modoExtracao = 'texto-corrido';
+    }
+
+    const clinica = detectarClinica(extraido.textoPlano);
+    const data = detectarData(extraido.textoPlano);
 
     return {
       sucesso: true,
@@ -60,11 +71,14 @@ function processarPdf(base64Data, nomeArquivo) {
       data: data,
       pacientes: pacientes,
       totalPacientes: pacientes.length,
+      // Modo usado para extrair os pacientes: 'tabela' (confiável, lida
+      // direto da grade) ou 'texto-corrido' (fallback, sujeito a
+      // desalinhamento se o Google não reconheceu a tabela do PDF).
+      modoExtracao: modoExtracao,
       // Texto bruto extraído pelo OCR do Google Docs. Exposto para o painel
       // "texto extraído (avançado)" do frontend, que serve para diagnosticar
-      // casos em que o parsing sai desalinhado — a ordem de leitura do OCR
-      // pode variar conforme o layout do PDF.
-      textoBruto: textoExtraido
+      // casos em que o parsing sai desalinhado.
+      textoBruto: extraido.textoPlano
     };
   } catch (erro) {
     return {
@@ -75,10 +89,13 @@ function processarPdf(base64Data, nomeArquivo) {
 }
 
 /**
- * Converte o blob do PDF em texto usando a Drive API v3 via UrlFetchApp.
+ * Converte o blob do PDF em Google Doc (via Drive API v3 + OCR) e devolve
+ * tanto a tabela nativa reconhecida pelo Docs (linhas/células, quando o
+ * Google conseguiu detectar a grade) quanto o texto corrido completo
+ * (usado para detectar clínica/data e como fallback de parsing).
  * Isso evita a necessidade de habilitar o serviço avançado do Drive manualmente.
  */
-function extrairTextoDoPdf(blob) {
+function extrairDadosDoPdf(blob) {
   // Chamada fantasma ao DriveApp para forçar o Apps Script a
   // pedir as permissões de escopo do Drive no momento da autorização
   DriveApp.getRootFolder();
@@ -112,9 +129,12 @@ function extrairTextoDoPdf(blob) {
   const arquivo = JSON.parse(response.getContentText());
 
   try {
-    // Extrai o texto do documento criado
     const doc = DocumentApp.openById(arquivo.id);
-    return doc.getBody().getText();
+    const body = doc.getBody();
+    return {
+      tabela: extrairLinhasDasTabelas(body),
+      textoPlano: body.getText()
+    };
   } finally {
     // Limpa o arquivo temporário mesmo se a extração acima falhar,
     // para não deixar arquivos órfãos no Drive
@@ -124,6 +144,31 @@ function extrairTextoDoPdf(blob) {
       muteHttpExceptions: true
     });
   }
+}
+
+/**
+ * Lê as tabelas nativas reconhecidas pelo Google Docs na conversão e
+ * devolve uma lista de linhas, cada uma como array de textos de célula na
+ * ordem real da grade (coluna a coluna). Múltiplas tabelas (uma por página,
+ * por exemplo) são concatenadas em sequência.
+ */
+function extrairLinhasDasTabelas(body) {
+  const linhas = [];
+  const tabelas = body.getTables();
+  for (let t = 0; t < tabelas.length; t++) {
+    const tabela = tabelas[t];
+    const numLinhas = tabela.getNumRows();
+    for (let r = 0; r < numLinhas; r++) {
+      const linha = tabela.getRow(r);
+      const numCelulas = linha.getNumCells();
+      const celulas = [];
+      for (let c = 0; c < numCelulas; c++) {
+        celulas.push(linha.getCell(c).getText());
+      }
+      linhas.push(celulas);
+    }
+  }
+  return linhas;
 }
 
 // ============================================================
@@ -195,6 +240,80 @@ function separarLeito(textoComLeito) {
   }
   return { nomeMae: textoComLeito.trim(), leito: '' };
 }
+
+// ============================================================
+// ETAPA 2a: PARSING A PARTIR DA TABELA NATIVA (caminho preferido)
+// ============================================================
+
+// Colunas da tabela, na ordem em que aparecem no PDF (ver cabeçalho
+// "ENF PRONT/PACIENTE/DAT.NASC. DIAGN/DIETA DESJEJUM COLAÇÃO ALMOÇO
+// LANCHE JANTAR CEIA 24HRS OBS ACEIT/COND").
+const COLUNA_LEITO = 0;
+const COLUNA_IDENTIDADE = 1;
+const COLUNA_DIAGNOSTICO = 2;
+const COLUNA_DESJEJUM = 3;
+
+// Célula "PRONT/PACIENTE/DAT.NASC." já vem isolada por coluna aqui, então
+// não precisa dos marcadores de via/rota usados no parsing por texto corrido.
+const padraoIdentidadeCelula = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(.+)$/i;
+
+function textoCelula(valor) {
+  return String(valor || '').replace(/\s+/g, ' ').trim();
+}
+
+// Cada célula de diagnóstico/refeição começa com a via de alimentação
+// (ORAL/ENTERAL/MISTA) como uma linha própria dentro da célula — remove
+// esse prefixo para manter só o conteúdo relevante.
+function removerViaInicial(texto) {
+  return texto.replace(/^(ORAL|ENTERAL|MISTA)\b\s*/i, '').trim();
+}
+
+/**
+ * Constrói a lista de pacientes a partir das linhas/células da tabela
+ * nativa do Google Docs. Cada linha da tabela já corresponde exatamente a
+ * um paciente, com uma célula por coluna — não há ambiguidade de ordem de
+ * leitura como no parsing por texto corrido, então este é o caminho
+ * preferido sempre que o Google reconhece a tabela do PDF.
+ */
+function parsearPacientesDeTabela(linhasTabela) {
+  const pacientes = [];
+
+  linhasTabela.forEach(celulas => {
+    if (celulas.length <= COLUNA_DESJEJUM) return; // linha incompleta/inesperada
+
+    const identidade = textoCelula(celulas[COLUNA_IDENTIDADE]);
+    const matchIdentidade = identidade.match(padraoIdentidadeCelula);
+    if (!matchIdentidade) return; // cabeçalho, linha de leito vazio, etc.
+
+    pacientes.push({
+      prontuario: matchIdentidade[1].trim(),
+      nome: matchIdentidade[2].trim(),
+      idade: matchIdentidade[3].trim(),
+      nomeMae: matchIdentidade[4].trim(),
+      leito: textoCelula(celulas[COLUNA_LEITO]),
+      diagnostico: removerViaInicial(textoCelula(celulas[COLUNA_DIAGNOSTICO])),
+      refeicoes: {
+        DESJEJUM: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM])),
+        COLACAO: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 1])),
+        ALMOCO: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 2])),
+        LANCHE: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 3])),
+        JANTAR: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 4])),
+        CEIA: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 5]))
+      }
+    });
+  });
+
+  return pacientes;
+}
+
+// ============================================================
+// ETAPA 2b: PARSING POR TEXTO CORRIDO (fallback)
+// ============================================================
+// Usado somente quando o Google não reconheceu a tabela do PDF como uma
+// tabela nativa (comum em PDFs escaneados/baseados em imagem sem
+// estrutura de grade detectável). Depende de adivinhar a ordem de leitura
+// do OCR e por isso é mais sujeito a desalinhamento — por isso a etapa de
+// revisão manual no frontend é sempre obrigatória.
 
 // Marca o início de um paciente em QUALQUER ponto do texto (não apenas no
 // início de uma linha). A extração de texto do Google Docs não garante que

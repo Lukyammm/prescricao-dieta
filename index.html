@@ -325,10 +325,15 @@
         ⚠️ <div>Confira os dados extraídos antes de gravar. Clique em qualquer célula para corrigir — a ordem das refeições pode precisar de ajuste em alguns pacientes.</div>
       </div>
 
+      <div class="alerta erro hidden" id="alertaModoFallback">
+        ⚠️ <div>O Google não reconheceu a tabela do PDF como uma grade — os dados abaixo foram lidos por texto corrido (menos confiável) e <strong>precisam de revisão cuidadosa</strong> antes de gravar.</div>
+      </div>
+
       <div class="meta-row">
         <div><strong>Clínica</strong><span id="metaClinica">—</span></div>
         <div><strong>Data</strong><span id="metaData">—</span></div>
         <div><strong>Pacientes identificados</strong><span id="metaTotal">—</span></div>
+        <div><strong>Modo de leitura</strong><span id="metaModo">—</span></div>
       </div>
 
       <div class="table-scroll">
@@ -452,7 +457,15 @@
       document.getElementById('metaClinica').textContent = resposta.clinica;
       document.getElementById('metaData').textContent = resposta.data;
       document.getElementById('metaTotal').textContent = resposta.totalPacientes;
+      document.getElementById('metaModo').textContent =
+        resposta.modoExtracao === 'texto-corrido' ? 'Texto corrido (fallback)' : 'Tabela nativa';
       document.getElementById('textoBrutoArea').value = resposta.textoBruto || '';
+
+      if (resposta.modoExtracao === 'texto-corrido') {
+        mostrar('alertaModoFallback');
+      } else {
+        esconder('alertaModoFallback');
+      }
 
       const tbody = document.getElementById('tabelaBody');
       tbody.innerHTML = '';
