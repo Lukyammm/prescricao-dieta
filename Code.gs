@@ -191,8 +191,17 @@ function separarLeito(textoComLeito) {
   return { nomeMae: textoComLeito.trim(), leito: '' };
 }
 
-const padraoInicioPaciente = /^(\d{3,6})\s*-/;
-const padraoIdentidade = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(.+?)(?=@@ROTA_(?:ORAL|ENTERAL|MISTA)@@|$)/i;
+// Marca o início de um paciente em QUALQUER ponto do texto (não apenas no
+// início de uma linha). A extração de texto do Google Docs não garante que
+// o prontuário de um novo paciente comece em uma linha própria — ele pode
+// ficar colado ao final da última célula do paciente anterior. Ancorar a
+// busca em início de linha fazia vários pacientes serem "engolidos" pelo
+// bloco anterior, misturando os dados de refeição de pacientes diferentes.
+const padraoInicioPacienteGlobal = /\d{3,6}\s*-\s*[^\d@][^@]{1,80}?-\s*\d{1,3}\s*ano\(s\)/gi;
+// O grupo do nome da mãe (4) para de capturar antes do diagnóstico começar. O diagnóstico
+// pode começar tanto com o marcador isolado de via quanto com a via colada
+// sem espaço à primeira palavra do diagnóstico (ex: "ORALDIETA ZERO").
+const padraoIdentidade = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(.+?)(?=@@ROTA_(?:ORAL|ENTERAL|MISTA)@@|(?:ORAL|ENTERAL|MISTA)[A-ZÀ-Ý]|$)/i;
 
 /**
  * Identifica cada bloco de paciente no texto e extrai:
@@ -214,15 +223,21 @@ const padraoIdentidade = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(
  */
 function parsearPacientes(texto) {
   const linhas = linhasRelevantes(texto);
+  const textoUnico = linhas.join(' ').replace(/\s+/g, ' ').trim();
+
   const inicios = [];
-  linhas.forEach((l, i) => { if (padraoInicioPaciente.test(l)) inicios.push(i); });
+  padraoInicioPacienteGlobal.lastIndex = 0;
+  let matchInicio;
+  while ((matchInicio = padraoInicioPacienteGlobal.exec(textoUnico)) !== null) {
+    inicios.push(matchInicio.index);
+  }
 
   const pacientes = [];
 
   for (let b = 0; b < inicios.length; b++) {
     const inicio = inicios[b];
-    const fim = b + 1 < inicios.length ? inicios[b + 1] : linhas.length;
-    const blocoJunto = linhas.slice(inicio, fim).join(' ').replace(/\s+/g, ' ').trim();
+    const fim = b + 1 < inicios.length ? inicios[b + 1] : textoUnico.length;
+    const blocoJunto = textoUnico.slice(inicio, fim).trim();
 
     const matchIdentidade = blocoJunto.match(padraoIdentidade);
     if (!matchIdentidade) continue; // formato inesperado nesse bloco; fica para a revisão manual
@@ -248,21 +263,22 @@ function parsearPacientes(texto) {
     };
 
     // separa via/rota de alimentação (ORAL, ENTERAL, MISTA) do conteúdo
-    // de diagnóstico + refeições, usando os marcadores exclusivos
+    // de diagnóstico + refeições, usando os marcadores exclusivos.
+    // A via do próprio diagnóstico (ex: "ORALDIETA ZERO") vem colada sem
+    // espaço à primeira palavra do diagnóstico, então NÃO é reconhecida
+    // como marcador isolado — por isso o texto antes do primeiro marcador
+    // é sempre o diagnóstico, nunca uma refeição.
     const restante = blocoJunto.slice(matchIdentidade[0].length);
     const partes = restante.split(/@@ROTA_(?:ORAL|ENTERAL|MISTA)@@/);
-    const segmentos = partes.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 
-    // primeiro segmento = diagnóstico + tipo de dieta
-    if (segmentos.length > 0) {
-      paciente.diagnostico = segmentos[0];
-    }
+    paciente.diagnostico = (partes[0] || '').trim().replace(/^(ORAL|ENTERAL|MISTA)\s*/i, '').trim();
 
     // segmentos seguintes = refeições, na ordem em que aparecem
     // (mapeadas na ordem padrão DESJEJUM->CEIA; CONFERIR na revisão)
+    const segmentos = partes.slice(1).map(s => s.trim()).filter(s => s.length > 0);
     for (let m = 0; m < REFEICOES.length; m++) {
-      if (segmentos[m + 1]) {
-        paciente.refeicoes[REFEICOES[m]] = segmentos[m + 1];
+      if (segmentos[m]) {
+        paciente.refeicoes[REFEICOES[m]] = segmentos[m];
       }
     }
 
