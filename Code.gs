@@ -62,7 +62,7 @@ function processarPdf(base64Data, nomeArquivo) {
       modoExtracao = 'texto-corrido';
     }
 
-    const clinica = detectarClinica(extraido.textoPlano);
+    const clinica = detectarClinica(extraido.textoPlano, nomeArquivo);
     const data = detectarData(extraido.textoPlano);
 
     return {
@@ -178,9 +178,64 @@ function extrairLinhasDasTabelas(body) {
 // O cabeçalho do relatório sai como "{NOME DA CLÍNICA}{DD/MM/AAAA}DATA: CLÍNICA:"
 // (valor colado antes dos rótulos, sem separador) — confirmado a partir de PDFs
 // reais exportados pelo sistema.
-function detectarClinica(texto) {
+//
+// ATENÇÃO: o sistema que gera o PDF TRUNCA o nome da clínica no cabeçalho
+// quando ele passa da largura da célula (~18 caracteres). Ex.: o setor
+// "A5-CIR DE CABEÇA E PESCOÇO" sai impresso como "A5-CIR DE CABEÇA E" — o
+// resto do nome NÃO existe em lugar nenhum dentro do PDF (confirmado no
+// conteúdo bruto de PDFs reais). A única fonte com o nome completo é o NOME
+// DO ARQUIVO baixado do sistema, então quando o nome do arquivo "continua"
+// o nome do cabeçalho, o nome do arquivo é usado no lugar.
+
+// Normaliza um nome de setor para comparação: maiúsculas, sem acentos e só
+// letras/números (ignora hífens, espaços e pontuação, que variam entre o
+// cabeçalho do PDF e o nome do arquivo — ex. "A5-CIR" vs "A5CIR").
+function normalizarSetor(valor) {
+  return String(valor || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+// Extrai o nome do setor a partir do nome do arquivo enviado:
+// remove a extensão e troca underscores por espaço.
+function setorDoNomeDoArquivo(nomeArquivo) {
+  return String(nomeArquivo || '')
+    .replace(/\.pdf\s*$/i, '')
+    .replace(/_+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Tamanho do prefixo comum entre duas strings já normalizadas.
+function prefixoComum(a, b) {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+}
+
+function detectarClinica(texto, nomeArquivo) {
   const match = texto.match(/^(.*?)(\d{2}\/\d{2}\/\d{4})\s*DATA:\s*CL[ÍI]NICA:\s*$/im);
-  return match ? match[1].trim() : 'NÃO IDENTIFICADA';
+  const doCabecalho = match ? match[1].trim() : '';
+  const doArquivo = setorDoNomeDoArquivo(nomeArquivo);
+
+  if (!doCabecalho) {
+    return doArquivo || 'NÃO IDENTIFICADA';
+  }
+  if (doArquivo) {
+    const nCab = normalizarSetor(doCabecalho);
+    const nArq = normalizarSetor(doArquivo);
+    // Cabeçalho truncado: o nome do arquivo é mais longo e começa (quase)
+    // igual ao do cabeçalho. A tolerância de 3 caracteres no prefixo cobre
+    // acentos/cedilhas perdidos no nome do arquivo (ex. "CABE_A" p/ "CABEÇA").
+    const truncado = nArq.length > nCab.length &&
+      prefixoComum(nCab, nArq) >= Math.max(4, nCab.length - 3);
+    if (truncado) {
+      return doArquivo;
+    }
+  }
+  return doCabecalho;
 }
 
 function detectarData(texto) {
