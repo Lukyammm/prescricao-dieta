@@ -284,9 +284,15 @@
       if (fileInput.files.length) processarArquivo(fileInput.files[0]);
     });
 
+    const TAMANHO_MAX_BYTES = 20 * 1024 * 1024; // 20MB
+
     function processarArquivo(arquivo) {
       if (arquivo.type !== 'application/pdf') {
         mostrarErro('Por favor, envie um arquivo PDF.');
+        return;
+      }
+      if (arquivo.size > TAMANHO_MAX_BYTES) {
+        mostrarErro('Arquivo muito grande. Envie um PDF com até 20MB.');
         return;
       }
 
@@ -305,6 +311,12 @@
           .processarPdf(base64, arquivo.name);
       };
       reader.readAsDataURL(arquivo);
+    }
+
+    function escapeHtml(valor) {
+      return String(valor == null ? '' : valor).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c]);
     }
 
     function exibirPreview(resposta) {
@@ -326,37 +338,39 @@
 
       resposta.pacientes.forEach((p, idx) => {
         const tr = document.createElement('tr');
+        // valores escapados para evitar XSS, já que vêm de OCR de PDF (fonte não confiável)
         tr.innerHTML = `
-          <td contenteditable="true" data-idx="${idx}" data-campo="leito">${p.leito || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="nome" class="col-nome">${p.nome || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="diagnostico">${p.diagnostico || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="DESJEJUM">${p.refeicoes.DESJEJUM || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="COLACAO">${p.refeicoes.COLACAO || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="ALMOCO">${p.refeicoes.ALMOCO || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="LANCHE">${p.refeicoes.LANCHE || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="JANTAR">${p.refeicoes.JANTAR || ''}</td>
-          <td contenteditable="true" data-idx="${idx}" data-campo="CEIA">${p.refeicoes.CEIA || ''}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="leito">${escapeHtml(p.leito)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="nome" class="col-nome">${escapeHtml(p.nome)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="diagnostico">${escapeHtml(p.diagnostico)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="DESJEJUM">${escapeHtml(p.refeicoes.DESJEJUM)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="COLACAO">${escapeHtml(p.refeicoes.COLACAO)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="ALMOCO">${escapeHtml(p.refeicoes.ALMOCO)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="LANCHE">${escapeHtml(p.refeicoes.LANCHE)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="JANTAR">${escapeHtml(p.refeicoes.JANTAR)}</td>
+          <td contenteditable="true" data-idx="${idx}" data-campo="CEIA">${escapeHtml(p.refeicoes.CEIA)}</td>
         `;
         tbody.appendChild(tr);
       });
 
-      // captura edições feitas na tabela
-      tbody.addEventListener('blur', function(e) {
-        if (e.target.tagName === 'TD') {
-          const idx = e.target.dataset.idx;
-          const campo = e.target.dataset.campo;
-          const valor = e.target.textContent;
-
-          if (['leito', 'nome', 'diagnostico'].includes(campo)) {
-            dadosAtuais.pacientes[idx][campo] = valor;
-          } else {
-            dadosAtuais.pacientes[idx].refeicoes[campo] = valor;
-          }
-        }
-      }, true);
-
       mostrar('cardPreview');
     }
+
+    // captura edições feitas na tabela (registrado uma única vez, fora de
+    // exibirPreview, para não acumular listeners a cada novo PDF processado)
+    document.getElementById('tabelaBody').addEventListener('blur', function(e) {
+      if (e.target.tagName === 'TD') {
+        const idx = e.target.dataset.idx;
+        const campo = e.target.dataset.campo;
+        const valor = e.target.textContent;
+
+        if (['leito', 'nome', 'diagnostico'].includes(campo)) {
+          dadosAtuais.pacientes[idx][campo] = valor;
+        } else {
+          dadosAtuais.pacientes[idx].refeicoes[campo] = valor;
+        }
+      }
+    }, true);
 
     function cancelarPreview() {
       esconder('cardPreview');
