@@ -35,8 +35,17 @@ function doGet() {
  * Recebe o PDF em base64 vindo do frontend, converte em texto
  * usando o truque do Google Docs + OCR, e devolve o texto bruto.
  */
+const MAX_BASE64_CHARS = 30 * 1024 * 1024; // ~22MB decodificado, com margem de segurança
+
 function processarPdf(base64Data, nomeArquivo) {
   try {
+    if (!base64Data) {
+      return { sucesso: false, erro: 'Nenhum arquivo recebido.' };
+    }
+    if (base64Data.length > MAX_BASE64_CHARS) {
+      return { sucesso: false, erro: 'Arquivo muito grande. Envie um PDF com até ~20MB.' };
+    }
+
     const bytes = Utilities.base64Decode(base64Data);
     const blob = Utilities.newBlob(bytes, 'application/pdf', nomeArquivo);
 
@@ -97,18 +106,19 @@ function extrairTextoDoPdf(blob) {
 
   const arquivo = JSON.parse(response.getContentText());
 
-  // Extrai o texto do documento criado
-  const doc = DocumentApp.openById(arquivo.id);
-  const texto = doc.getBody().getText();
-
-  // Limpa o arquivo temporário
-  UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + arquivo.id, {
-    method: 'delete',
-    headers: { 'Authorization': 'Bearer ' + token },
-    muteHttpExceptions: true
-  });
-
-  return texto;
+  try {
+    // Extrai o texto do documento criado
+    const doc = DocumentApp.openById(arquivo.id);
+    return doc.getBody().getText();
+  } finally {
+    // Limpa o arquivo temporário mesmo se a extração acima falhar,
+    // para não deixar arquivos órfãos no Drive
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + arquivo.id, {
+      method: 'delete',
+      headers: { 'Authorization': 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+  }
 }
 
 // ============================================================
@@ -264,10 +274,35 @@ function garantirAbaConfigurada() {
 }
 
 /**
+ * Neutraliza valores que começam com =, +, -, @ (ou espaço/tab seguido
+ * deles) para evitar injeção de fórmula na planilha (CSV/Sheets injection).
+ * Tanto o setValues() do Apps Script quanto uma futura exportação/abertura
+ * em Excel podem interpretar esse tipo de valor como fórmula executável.
+ */
+function sanitizarValorCelula(valor) {
+  if (typeof valor !== 'string') return valor;
+  return /^\s*[=+\-@]/.test(valor) ? "'" + valor : valor;
+}
+
+/**
  * Recebe os dados já revisados/corrigidos pelo admin no frontend
  * e grava uma linha por paciente na planilha vinculada.
  */
 function salvarNaPlanilha(dados) {
+  if (!dados || !Array.isArray(dados.pacientes)) {
+    return { sucesso: false, erro: 'Dados inválidos recebidos do frontend.' };
+  }
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (erroLock) {
+    return {
+      sucesso: false,
+      erro: 'A planilha está sendo atualizada por outra pessoa. Tente novamente em instantes.'
+    };
+  }
+
   try {
     const sheet = garantirAbaConfigurada();
 
@@ -285,7 +320,7 @@ function salvarNaPlanilha(dados) {
       p.refeicoes.LANCHE,
       p.refeicoes.JANTAR,
       p.refeicoes.CEIA
-    ]);
+    ].map(sanitizarValorCelula));
 
     if (linhas.length > 0) {
       const proximaLinha = sheet.getLastRow() + 1;
@@ -302,5 +337,7 @@ function salvarNaPlanilha(dados) {
       sucesso: false,
       erro: erro.message
     };
+  } finally {
+    lock.releaseLock();
   }
 }
