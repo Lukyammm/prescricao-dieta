@@ -125,15 +125,74 @@ function extrairTextoDoPdf(blob) {
 // ETAPA 2: PARSING - TRANSFORMAR TEXTO BRUTO EM DADOS ESTRUTURADOS
 // ============================================================
 
+// O cabeçalho do relatório sai como "{NOME DA CLÍNICA}{DD/MM/AAAA}DATA: CLÍNICA:"
+// (valor colado antes dos rótulos, sem separador) — confirmado a partir de PDFs
+// reais exportados pelo sistema.
 function detectarClinica(texto) {
-  const match = texto.match(/CL[ÍI]NICA\s*:\s*(.+)/i);
-  return match ? match[1].trim().split('\n')[0] : 'NÃO IDENTIFICADA';
+  const match = texto.match(/^(.*?)(\d{2}\/\d{2}\/\d{4})\s*DATA:\s*CL[ÍI]NICA:\s*$/im);
+  return match ? match[1].trim() : 'NÃO IDENTIFICADA';
 }
 
 function detectarData(texto) {
-  const match = texto.match(/DATA\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
+  const match = texto.match(/(\d{2}\/\d{2}\/\d{4})\s*DATA:\s*CL[ÍI]NICA:/i);
   return match ? match[1] : Utilities.formatDate(new Date(), 'GMT-3', 'dd/MM/yyyy');
 }
+
+// Linhas fixas de cabeçalho/rodapé que se repetem em toda página do relatório
+// e não fazem parte de nenhum paciente — descartadas antes do parsing.
+const LINHAS_IGNORADAS = [
+  /^ENF\s+PRONT\/PACIENTE/i,
+  /^Legenda:/i,
+  /^Obs:\s*sopa inteira/i,
+  /RELAT[ÓO]RIO PRESCRI[ÇC][ÃA]O DIET[ÉE]TICA/i,
+  /^24\s*HRS\s*OBS\s*ACEIT\/COND/i,
+  /^TIPO DE DIETA:/i,
+  /DATA:\s*CL[ÍI]NICA:/i
+];
+
+// Marcador exclusivo (token que nunca aparece em texto real) para linhas que
+// são EXATAMENTE a via de alimentação (ORAL/ENTERAL/MISTA como célula
+// própria da tabela). Precisa ser inconfundível com texto comum porque a
+// via também aparece como PALAVRA dentro do diagnóstico
+// (ex: "DIETA ORAL - DE ACORDO COM..."), e ali NÃO é separador de refeição.
+const ROTA_MARCADORES = {
+  ORAL: '@@ROTA_ORAL@@',
+  ENTERAL: '@@ROTA_ENTERAL@@',
+  MISTA: '@@ROTA_MISTA@@'
+};
+const padraoRotaExata = /^(ORAL|ENTERAL|MISTA)$/i;
+
+function linhasRelevantes(texto) {
+  return texto.split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0 && !LINHAS_IGNORADAS.some(r => r.test(l)))
+    .map(l => padraoRotaExata.test(l) ? ROTA_MARCADORES[l.toUpperCase()] : l);
+}
+
+// Códigos de leito observados: curto (1 letra + 3 dígitos, ex A514.02),
+// EXTRA.EXTxx, ou o nome do setor repetido (ex "OBS BREVE 01- CIRÚRGICA I.01").
+// Como o PDF às vezes gruda o código no final do nome da mãe sem espaço
+// (ex "...DE LIMAA514.02"), a separação é feita por sufixo, não por linha inteira.
+const padraoLeitoExtra = /(EXTRA\.\s?EXT\d{2})\s*$/i;
+const padraoLeitoLongo = /(OBS\s*BREVE\s*\d{2}\s*-?\s*[A-ZÇÁÉÍÓÚÂÊÎÔÛÃÕÀ\s]{2,40}?\.\d{2})\s*$/i;
+const padraoLeitoCurto = /([A-Z]\d{3}\.\d{2})\s*$/i;
+
+function separarLeito(textoComLeito) {
+  const padroes = [padraoLeitoExtra, padraoLeitoLongo, padraoLeitoCurto];
+  for (let i = 0; i < padroes.length; i++) {
+    const m = textoComLeito.match(padroes[i]);
+    if (m) {
+      return {
+        nomeMae: textoComLeito.slice(0, m.index).trim(),
+        leito: m[1].replace(/\s+/g, ' ').trim()
+      };
+    }
+  }
+  return { nomeMae: textoComLeito.trim(), leito: '' };
+}
+
+const padraoInicioPaciente = /^(\d{3,6})\s*-/;
+const padraoIdentidade = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(.+?)(?=@@ROTA_(?:ORAL|ENTERAL|MISTA)@@|$)/i;
 
 /**
  * Identifica cada bloco de paciente no texto e extrai:
@@ -142,103 +201,72 @@ function detectarData(texto) {
  * - diagnóstico / tipo de dieta
  * - conteúdo de cada refeição (na ordem em que aparece no texto)
  *
+ * O texto extraído do PDF quebra cada célula da tabela em várias linhas
+ * (largura da coluna, não pontuação), então a identificação do paciente e
+ * do leito frequentemente fica espalhada por várias linhas — por isso cada
+ * bloco de paciente é primeiro unido em uma única string antes de aplicar
+ * os padrões acima.
+ *
  * ATENÇÃO: a ordem das refeições extraídas do texto PODE não bater
  * 100% com a ordem visual da tabela (é uma limitação de extração de
  * PDF, não do código). Por isso a etapa de revisão no frontend é
  * OBRIGATÓRIA antes de gravar.
  */
 function parsearPacientes(texto) {
-  const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const linhas = linhasRelevantes(texto);
+  const inicios = [];
+  linhas.forEach((l, i) => { if (padraoInicioPaciente.test(l)) inicios.push(i); });
+
   const pacientes = [];
 
-  // Padrão do código de leito/enfermaria: ex B500.03, A501.01, C700.03,
-  // EXTRA.EXT01, ou variações tipo "OBS BREVE 01- CIRÚRGICA I.01"
-  const padraoLeito = /^([A-Z]{1,10}\.?\s?\d{0,4}\.\d{2}|EXTRA\.\s?EXT\d{2})$/i;
+  for (let b = 0; b < inicios.length; b++) {
+    const inicio = inicios[b];
+    const fim = b + 1 < inicios.length ? inicios[b + 1] : linhas.length;
+    const blocoJunto = linhas.slice(inicio, fim).join(' ').replace(/\s+/g, ' ').trim();
 
-  // Padrão da linha de identificação do paciente:
-  // NUMERO-NOME-IDADE ano(s)...-NOME DA MAE
-  const padraoPaciente = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).+?)-\s*(.+)$/i;
+    const matchIdentidade = blocoJunto.match(padraoIdentidade);
+    if (!matchIdentidade) continue; // formato inesperado nesse bloco; fica para a revisão manual
 
-  let indiceAtual = 0;
+    const { nomeMae, leito } = separarLeito(matchIdentidade[4]);
 
-  while (indiceAtual < linhas.length) {
-    const linha = linhas[indiceAtual];
-    const matchPaciente = linha.match(padraoPaciente);
-
-    if (matchPaciente) {
-      const paciente = {
-        prontuario: matchPaciente[1].trim(),
-        nome: matchPaciente[2].trim(),
-        idade: matchPaciente[3].trim(),
-        nomeMae: matchPaciente[4].trim(),
-        leito: '',
-        diagnostico: '',
-        tipoDieta: '',
-        refeicoes: {
-          DESJEJUM: '',
-          COLACAO: '',
-          ALMOCO: '',
-          LANCHE: '',
-          JANTAR: '',
-          CEIA: ''
-        }
-      };
-
-      // procura o código de leito nas próximas linhas
-      let j = indiceAtual + 1;
-      while (j < linhas.length && j < indiceAtual + 3) {
-        if (padraoLeito.test(linhas[j])) {
-          paciente.leito = linhas[j];
-          break;
-        }
-        j++;
+    const paciente = {
+      prontuario: matchIdentidade[1].trim(),
+      nome: matchIdentidade[2].trim(),
+      idade: matchIdentidade[3].trim(),
+      nomeMae: nomeMae,
+      leito: leito,
+      diagnostico: '',
+      tipoDieta: '',
+      refeicoes: {
+        DESJEJUM: '',
+        COLACAO: '',
+        ALMOCO: '',
+        LANCHE: '',
+        JANTAR: '',
+        CEIA: ''
       }
+    };
 
-      // a partir daqui, coleta os blocos ORAL/ENTERAL/MISTA até
-      // encontrar o próximo paciente (ou fim do texto)
-      const blocos = [];
-      let k = j + 1;
-      while (k < linhas.length && !padraoPaciente.test(linhas[k])) {
-        blocos.push(linhas[k]);
-        k++;
-      }
+    // separa via/rota de alimentação (ORAL, ENTERAL, MISTA) do conteúdo
+    // de diagnóstico + refeições, usando os marcadores exclusivos
+    const restante = blocoJunto.slice(matchIdentidade[0].length);
+    const partes = restante.split(/@@ROTA_(?:ORAL|ENTERAL|MISTA)@@/);
+    const segmentos = partes.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 
-      // separa via/rota de alimentação (ORAL, ENTERAL, MISTA)
-      // do conteúdo de diagnóstico + refeições
-      const rotaRegex = /^(ORAL|ENTERAL|MISTA)$/i;
-      let segmentos = [];
-      let segmentoAtual = [];
-
-      blocos.forEach(l => {
-        if (rotaRegex.test(l)) {
-          if (segmentoAtual.length > 0) {
-            segmentos.push(segmentoAtual.join(' '));
-          }
-          segmentoAtual = [];
-        } else {
-          segmentoAtual.push(l);
-        }
-      });
-      if (segmentoAtual.length > 0) segmentos.push(segmentoAtual.join(' '));
-
-      // primeiro segmento = diagnóstico + tipo de dieta
-      if (segmentos.length > 0) {
-        paciente.diagnostico = segmentos[0];
-      }
-
-      // segmentos seguintes = refeições, na ordem em que aparecem
-      // (mapeadas na ordem padrão DESJEJUM->CEIA; CONFERIR na revisão)
-      for (let m = 0; m < REFEICOES.length; m++) {
-        if (segmentos[m + 1]) {
-          paciente.refeicoes[REFEICOES[m]] = segmentos[m + 1];
-        }
-      }
-
-      pacientes.push(paciente);
-      indiceAtual = k;
-    } else {
-      indiceAtual++;
+    // primeiro segmento = diagnóstico + tipo de dieta
+    if (segmentos.length > 0) {
+      paciente.diagnostico = segmentos[0];
     }
+
+    // segmentos seguintes = refeições, na ordem em que aparecem
+    // (mapeadas na ordem padrão DESJEJUM->CEIA; CONFERIR na revisão)
+    for (let m = 0; m < REFEICOES.length; m++) {
+      if (segmentos[m + 1]) {
+        paciente.refeicoes[REFEICOES[m]] = segmentos[m + 1];
+      }
+    }
+
+    pacientes.push(paciente);
   }
 
   return pacientes;
