@@ -312,8 +312,58 @@ const COLUNA_DESJEJUM = 3;
 // não precisa dos marcadores de via/rota usados no parsing por texto corrido.
 const padraoIdentidadeCelula = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(.+)$/i;
 
+// Assinatura de "início de outro paciente" (prontuário + idade) encontrada NO
+// MEIO do texto de uma célula que deveria conter só diagnóstico/refeição —
+// indica que duas linhas/pacientes se fundiram na extração (célula ou linha
+// deslocada pelo reconhecimento de tabela do Google).
+const padraoIdentidadeEmbutida = /\d{3,6}\s*-\s*[^\d@]{2,80}?-?\s*\d{1,3}\s*ano\(s\)/i;
+
+// Texto de cabeçalho de coluna que às vezes vaza para dentro de uma célula
+// de dados quando a extração perde o alinhamento das colunas.
+const padraoCabecalhoVazado = /DESJEJUM\s*-\s*6h|COLA[ÇC][ÃA]O\s*-\s*9h|ALMO[ÇC]O\s*-\s*12h|LANCHE\s*-\s*15h|JANTAR\s*-\s*18h/i;
+
 function textoCelula(valor) {
   return String(valor || '').replace(/\s+/g, ' ').trim();
+}
+
+// Número mínimo de colunas esperado numa linha de paciente válida:
+// leito, identidade, diagnóstico + 6 refeições.
+const MIN_COLUNAS_PACIENTE = COLUNA_DESJEJUM + REFEICOES.length;
+
+// Detecta sinais de desalinhamento no diagnóstico/refeições de um paciente já
+// extraído (por qualquer um dos dois caminhos de parsing), sem descartar o
+// paciente — apenas sinaliza para revisão manual. Usada tanto pelo caminho de
+// tabela nativa quanto pelo fallback de texto corrido, porque o vazamento de
+// dados de outro paciente pode acabar em qualquer um desses campos (não só
+// no nome da mãe), dependendo de onde o marcador de via/rota ficou.
+function avisosDeConteudoSuspeito(diagnostico, refeicoes) {
+  const avisos = [];
+
+  const camposParaChecar = [diagnostico].concat(Object.keys(refeicoes).map(k => refeicoes[k]));
+  camposParaChecar.forEach(texto => {
+    if (padraoIdentidadeEmbutida.test(texto)) {
+      avisos.push('Possível mistura com outro paciente (identificação de outro prontuário encontrada no meio do texto).');
+    }
+    if (padraoCabecalhoVazado.test(texto)) {
+      avisos.push('Texto de cabeçalho de coluna encontrado dentro de uma célula de dados.');
+    }
+  });
+
+  return avisos;
+}
+
+// Detecta sinais de desalinhamento numa linha já extraída da tabela nativa
+// (a extração não tem como se autocorrigir quando o problema vem do
+// reconhecimento de tabela do Google, então o objetivo é tornar o erro
+// visível, não escondê-lo).
+function detectarAvisosTabela(celulas, diagnostico, refeicoes) {
+  const avisos = avisosDeConteudoSuspeito(diagnostico, refeicoes);
+
+  if (celulas.length !== MIN_COLUNAS_PACIENTE && celulas.length !== MIN_COLUNAS_PACIENTE + 3) {
+    avisos.push('Número de colunas da linha (' + celulas.length + ') fora do esperado — dados podem estar deslocados.');
+  }
+
+  return avisos;
 }
 
 // Cada célula de diagnóstico/refeição começa com a via de alimentação
@@ -340,21 +390,25 @@ function parsearPacientesDeTabela(linhasTabela) {
     const matchIdentidade = identidade.match(padraoIdentidadeCelula);
     if (!matchIdentidade) return; // cabeçalho, linha de leito vazio, etc.
 
+    const diagnostico = removerViaInicial(textoCelula(celulas[COLUNA_DIAGNOSTICO]));
+    const refeicoes = {
+      DESJEJUM: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM])),
+      COLACAO: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 1])),
+      ALMOCO: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 2])),
+      LANCHE: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 3])),
+      JANTAR: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 4])),
+      CEIA: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 5]))
+    };
+
     pacientes.push({
       prontuario: matchIdentidade[1].trim(),
       nome: matchIdentidade[2].trim(),
       idade: matchIdentidade[3].trim(),
       nomeMae: matchIdentidade[4].trim(),
       leito: textoCelula(celulas[COLUNA_LEITO]),
-      diagnostico: removerViaInicial(textoCelula(celulas[COLUNA_DIAGNOSTICO])),
-      refeicoes: {
-        DESJEJUM: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM])),
-        COLACAO: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 1])),
-        ALMOCO: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 2])),
-        LANCHE: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 3])),
-        JANTAR: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 4])),
-        CEIA: removerViaInicial(textoCelula(celulas[COLUNA_DESJEJUM + 5]))
-      }
+      diagnostico: diagnostico,
+      refeicoes: refeicoes,
+      avisos: detectarAvisosTabela(celulas, diagnostico, refeicoes)
     });
   });
 
@@ -423,6 +477,11 @@ function parsearPacientes(texto) {
 
     const { nomeMae, leito } = separarLeito(matchIdentidade[4]);
 
+    const avisos = [];
+    if (padraoIdentidadeEmbutida.test(nomeMae)) {
+      avisos.push('Possível paciente engolido pelo bloco anterior (identificação de outro prontuário encontrada no nome da mãe).');
+    }
+
     const paciente = {
       prontuario: matchIdentidade[1].trim(),
       nome: matchIdentidade[2].trim(),
@@ -438,7 +497,8 @@ function parsearPacientes(texto) {
         LANCHE: '',
         JANTAR: '',
         CEIA: ''
-      }
+      },
+      avisos: avisos
     };
 
     // separa via/rota de alimentação (ORAL, ENTERAL, MISTA) do conteúdo
@@ -455,11 +515,16 @@ function parsearPacientes(texto) {
     // segmentos seguintes = refeições, na ordem em que aparecem
     // (mapeadas na ordem padrão DESJEJUM->CEIA; CONFERIR na revisão)
     const segmentos = partes.slice(1).map(s => s.trim()).filter(s => s.length > 0);
+    if (segmentos.length !== REFEICOES.length) {
+      avisos.push('Quantidade de refeições encontradas (' + segmentos.length + ') não bate com o esperado (' + REFEICOES.length + ') — ordem pode estar deslocada.');
+    }
     for (let m = 0; m < REFEICOES.length; m++) {
       if (segmentos[m]) {
         paciente.refeicoes[REFEICOES[m]] = segmentos[m];
       }
     }
+
+    avisos.push.apply(avisos, avisosDeConteudoSuspeito(paciente.diagnostico, paciente.refeicoes));
 
     pacientes.push(paciente);
   }
@@ -563,4 +628,12 @@ function salvarNaPlanilha(dados) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ============================================================
+// EXPORT PARA TESTES (Node) — não afeta a execução no Apps Script,
+// onde `module` não existe.
+// ============================================================
+if (typeof module !== 'undefined') {
+  module.exports = { parsearPacientesDeTabela, parsearPacientes, REFEICOES };
 }

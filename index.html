@@ -187,6 +187,12 @@
     .alerta.erro { background: #fef1f1; border-color: #f8c9c9; }
     .alerta.sucesso { background: #edfcf3; border-color: #b7e9cb; }
 
+    tr.linha-suspeita td { background: #fff8eb; }
+    .aviso-icone {
+      cursor: help;
+      font-size: 14px;
+    }
+
     table.preview {
       width: 100%;
       border-collapse: collapse;
@@ -340,6 +346,7 @@
         <table class="preview" id="tabelaPreview">
           <thead>
             <tr>
+              <th></th>
               <th class="col-leito">Leito</th>
               <th class="col-nome">Paciente</th>
               <th>Diagnóstico / Dieta</th>
@@ -472,8 +479,14 @@
 
       resposta.pacientes.forEach((p, idx) => {
         const tr = document.createElement('tr');
+        const temAvisos = Array.isArray(p.avisos) && p.avisos.length > 0;
+        if (temAvisos) tr.classList.add('linha-suspeita');
+        const iconeAviso = temAvisos
+          ? `<span class="aviso-icone" title="${escapeHtml(p.avisos.join('; '))}">⚠️</span>`
+          : '';
         // valores escapados para evitar XSS, já que vêm de OCR de PDF (fonte não confiável)
         tr.innerHTML = `
+          <td>${iconeAviso}</td>
           <td contenteditable="true" data-idx="${idx}" data-campo="leito">${escapeHtml(p.leito)}</td>
           <td contenteditable="true" data-idx="${idx}" data-campo="nome" class="col-nome">${escapeHtml(p.nome)}</td>
           <td contenteditable="true" data-idx="${idx}" data-campo="diagnostico">${escapeHtml(p.diagnostico)}</td>
