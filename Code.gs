@@ -59,7 +59,12 @@ function processarPdf(base64Data, nomeArquivo) {
       clinica: clinica,
       data: data,
       pacientes: pacientes,
-      totalPacientes: pacientes.length
+      totalPacientes: pacientes.length,
+      // Texto bruto extraído pelo OCR do Google Docs. Exposto para o painel
+      // "texto extraído (avançado)" do frontend, que serve para diagnosticar
+      // casos em que o parsing sai desalinhado — a ordem de leitura do OCR
+      // pode variar conforme o layout do PDF.
+      textoBruto: textoExtraido
     };
   } catch (erro) {
     return {
