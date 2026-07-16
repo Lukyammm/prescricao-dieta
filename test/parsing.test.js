@@ -132,24 +132,30 @@ teste('texto corrido: refeição faltando desloca a contagem e gera aviso', () =
   assert.strictEqual(pacientes[0].refeicoes.CEIA, '');
 });
 
-teste('texto corrido: refeição contendo identidade de outro paciente gera aviso de mistura', () => {
+teste('texto corrido: identidade embutida numa refeição vira paciente separado e ambos ficam sinalizados', () => {
   const texto = textoPacienteCompleto(
     '34801-FRANCISCO PEREIRA DOS SANTOS-84 ano(s) 0 mes(es) e 2 dia(s)-GEOGINA NAZARIO DOS SANTOS',
     'NEOPLASIA MALIGNA DA PROSTATA',
     [
       'MINGAU DM',
-      // sem hífen antes de "ano(s)" simula um deslize do OCR: ainda cai no
-      // padrão de identidade embutida, mas não é reconhecido como início de
-      // um novo bloco de paciente — por isso permanece "grudado" nesta
-      // refeição em vez de virar um paciente à parte.
+      // sem hífen antes de "ano(s)" simula um deslize do OCR. Desde o
+      // relaxamento do padrão de início de paciente (PDFs reais perdem o
+      // hífen), essa identidade É reconhecida como início de um novo
+      // bloco: o segundo paciente deixa de ser engolido pelo primeiro.
       'SOPA PASSADA ** (ZERO - S/ SONDA)80ML - ISOSOURCE ** 34277-JOSE AUGUSTO DE LIMA 61 ano(s) 11 mes(es) e 30 dia(s) MARIA AUGUSTA DE LIMA',
       'SOPA PASSADA', 'VITAMINA DM', 'VITAMINA DM', 'VITAMINA DM'
     ]
   );
   const pacientes = parsearPacientes(texto);
-  assert.strictEqual(pacientes.length, 1);
-  assert.ok(pacientes[0].avisos.some(a => a.includes('mistura com outro paciente')),
-    'esperava aviso de mistura, avisos: ' + JSON.stringify(pacientes[0].avisos));
+  assert.strictEqual(pacientes.length, 2);
+  assert.strictEqual(pacientes[0].prontuario, '34801');
+  assert.strictEqual(pacientes[1].prontuario, '34277');
+  // as refeições ficaram divididas entre os dois blocos, então os dois
+  // pacientes precisam continuar sinalizados para revisão manual
+  pacientes.forEach(p => {
+    assert.ok(p.avisos.some(a => a.includes('não bate com o esperado')),
+      'esperava aviso de contagem de refeições, avisos: ' + JSON.stringify(p.avisos));
+  });
 });
 
 console.log('');

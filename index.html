@@ -293,6 +293,91 @@
       background: #fbfcfd;
       resize: vertical;
     }
+
+    /* ---- Painel de quantitativo ---- */
+    .secao-quant { margin-bottom: 22px; }
+    .secao-quant h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--texto-suave);
+      margin: 0 0 8px;
+      border-bottom: 2px solid var(--cinza-borda);
+      padding-bottom: 6px;
+    }
+    table.quant { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.quant td { padding: 6px 10px; border-bottom: 1px solid #eef1f6; vertical-align: top; }
+    table.quant td.col-qtd { width: 80px; }
+    table.quant input.qtd {
+      width: 64px;
+      padding: 5px 8px;
+      border: 1px solid var(--cinza-borda-forte);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      text-align: center;
+    }
+    table.quant .origens summary {
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--texto-suave);
+      list-style: none;
+    }
+    table.quant .origens ul {
+      margin: 6px 0 0;
+      padding-left: 16px;
+      font-size: 12px;
+      color: var(--texto-suave);
+    }
+    .add-item-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      align-items: center;
+    }
+    select.sel-item, .add-item-row select {
+      max-width: 420px;
+      padding: 6px 8px;
+      border: 1px solid var(--cinza-borda-forte);
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-family: inherit;
+      background: white;
+    }
+    .nr-bloco {
+      background: #fff8eb;
+      border: 1px solid #fde3a7;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+    }
+    .nr-bloco h3 { margin: 0 0 10px; font-size: 14px; }
+    .nr-linha {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 8px 0;
+      border-bottom: 1px dashed #f0dfae;
+      font-size: 13px;
+    }
+    .nr-linha:last-child { border-bottom: none; }
+    .nr-texto { font-weight: 600; }
+    .nr-meta { color: var(--texto-suave); font-size: 12px; }
+    .nr-linha label { font-size: 12px; color: var(--texto-suave); display: flex; align-items: center; gap: 4px; }
+    .btn-mini {
+      border: 1px solid var(--cinza-borda-forte);
+      background: white;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-mini:hover { background: var(--cinza-bg-2); }
+    .btn-mini.aplicar { background: var(--verde); border-color: var(--verde); color: white; }
+    .btn-mini.aplicar:hover { background: var(--verde-escuro); }
   </style>
 </head>
 <body>
@@ -366,7 +451,8 @@
         <span class="hint">Edite diretamente na tabela se algo estiver fora do lugar</span>
         <div style="display:flex; gap:10px;">
           <button class="btn btn-outline" onclick="cancelarPreview()">Cancelar</button>
-          <button class="btn btn-success" id="btnConfirmar" onclick="confirmarGravacao()">Confirmar e gravar na planilha</button>
+          <button class="btn btn-outline" id="btnConfirmar" onclick="confirmarGravacao()">Gravar só a lista de pacientes</button>
+          <button class="btn btn-primary" id="btnQuant" onclick="gerarQuantitativoUI()">Gerar quantitativo →</button>
         </div>
       </div>
 
@@ -383,7 +469,44 @@
       </details>
     </div>
 
-    <!-- ETAPA 3: SUCESSO -->
+    <!-- ETAPA 3: QUANTITATIVO (conferência das contagens por item) -->
+    <div class="card hidden" id="cardQuant">
+      <div class="alerta">
+        📊 <div>Confira o <strong>quantitativo</strong> gerado a partir das dietas — é o mesmo formato da planilha de faturamento
+        (quantos de cada item, por refeição). Ajuste as quantidades se necessário. Itens, regras de tradução e clínicas ficam nas
+        abas <strong>Itens</strong>, <strong>Regras</strong> e <strong>Clinicas</strong> da planilha e também podem ser editados por lá.</div>
+      </div>
+
+      <div class="meta-row">
+        <div><strong>Clínica (PDF)</strong><span id="quantClinica">—</span></div>
+        <div><strong>Data</strong><span id="quantData">—</span></div>
+        <div>
+          <strong>Coluna no quantitativo</strong>
+          <select id="quantColuna" class="sel-item"></select>
+        </div>
+      </div>
+
+      <div class="alerta erro hidden" id="quantAvisos"></div>
+
+      <div class="nr-bloco hidden" id="nrBloco">
+        <h3>⚠️ Textos que o sistema não reconheceu</h3>
+        <p class="hint" style="margin:0 0 8px;">Escolha em qual item cada um conta (ou ignore). Marcando “lembrar”, o sistema
+        aprende a regra e aplica automaticamente nos próximos PDFs.</p>
+        <div id="nrLista"></div>
+      </div>
+
+      <div id="quantSecoes"></div>
+
+      <div class="actions-footer">
+        <span class="hint">O quantitativo é gravado na aba “QDR dia-mês”, na coluna da clínica.</span>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-outline" onclick="voltarParaPreview()">← Voltar aos pacientes</button>
+          <button class="btn btn-success" id="btnGravarQuant" onclick="gravarQuantitativo()">Confirmar e gravar tudo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ETAPA 4: SUCESSO -->
     <div class="card hidden" id="cardSucesso">
       <div class="alerta sucesso">
         ✅ <div id="mensagemSucesso"></div>
@@ -542,14 +665,313 @@
             mostrar('cardPreview');
           }
           btn.disabled = false;
-          btn.textContent = 'Confirmar e gravar na planilha';
+          btn.textContent = 'Gravar só a lista de pacientes';
         })
         .withFailureHandler(erro => {
           mostrarErro('Erro ao gravar: ' + erro.message);
           btn.disabled = false;
-          btn.textContent = 'Confirmar e gravar na planilha';
+          btn.textContent = 'Gravar só a lista de pacientes';
         })
         .salvarNaPlanilha(dadosAtuais);
+    }
+
+    // ==========================================================
+    // QUANTITATIVO
+    // ==========================================================
+    let quantAtual = null; // estado da tela de conferência do quantitativo
+
+    function gerarQuantitativoUI() {
+      const btn = document.getElementById('btnQuant');
+      btn.disabled = true;
+      btn.textContent = 'Classificando dietas...';
+
+      google.script.run
+        .withSuccessHandler(resposta => {
+          btn.disabled = false;
+          btn.textContent = 'Gerar quantitativo →';
+          if (!resposta.sucesso) {
+            mostrarErro(resposta.erro || 'Não foi possível gerar o quantitativo.');
+            return;
+          }
+          quantAtual = {
+            secoes: resposta.secoes,
+            naoReconhecidos: agruparNaoReconhecidos(resposta.naoReconhecidos),
+            avisos: resposta.avisos || [],
+            catalogo: resposta.catalogo,
+            colunas: resposta.colunas,
+            coluna: resposta.coluna,
+            regrasNovas: [],
+            itensNovos: []
+          };
+          esconder('cardPreview');
+          exibirQuantitativo();
+        })
+        .withFailureHandler(erro => {
+          btn.disabled = false;
+          btn.textContent = 'Gerar quantitativo →';
+          mostrarErro('Erro ao gerar quantitativo: ' + erro.message);
+        })
+        .montarQuantitativo({
+          clinica: dadosAtuais.clinica,
+          data: dadosAtuais.data,
+          pacientes: dadosAtuais.pacientes
+        });
+    }
+
+    // O mesmo texto desconhecido costuma se repetir em vários pacientes —
+    // agrupa para o admin decidir uma única vez.
+    function agruparNaoReconhecidos(lista) {
+      const grupos = {};
+      (lista || []).forEach(nr => {
+        const chave = nr.refeicao + '||' + nr.texto.toUpperCase().replace(/\s+/g, ' ').trim();
+        if (!grupos[chave]) {
+          grupos[chave] = { refeicao: nr.refeicao, texto: nr.texto, qtd: 0, pacientes: [] };
+        }
+        grupos[chave].qtd++;
+        grupos[chave].pacientes.push((nr.leito ? nr.leito + ' — ' : '') + nr.paciente);
+      });
+      return Object.keys(grupos).map(chave => grupos[chave]);
+    }
+
+    const ROTULOS_REFEICAO = {
+      DESJEJUM: 'Desjejum', COLACAO: 'Colação', ALMOCO: 'Almoço',
+      LANCHE: 'Lanche', JANTAR: 'Jantar', CEIA: 'Ceia'
+    };
+
+    function opcoesDeItens(secaoPreferida) {
+      let html = '';
+      const ordenado = quantAtual.catalogo.slice().sort((a, b) =>
+        (a.secao === secaoPreferida ? -1 : 0) - (b.secao === secaoPreferida ? -1 : 0));
+      ordenado.forEach(grupo => {
+        html += `<optgroup label="${escapeHtml(grupo.rotulo)}">`;
+        grupo.itens.forEach(item => {
+          html += `<option value="${escapeHtml(grupo.secao + '||' + item.nome)}">${escapeHtml(item.nome)}</option>`;
+        });
+        html += '</optgroup>';
+      });
+      html += '<optgroup label="—"><option value="__novo__">➕ Criar item novo...</option></optgroup>';
+      return html;
+    }
+
+    function exibirQuantitativo() {
+      document.getElementById('quantClinica').textContent = dadosAtuais.clinica;
+      document.getElementById('quantData').textContent = dadosAtuais.data;
+
+      const seletorColuna = document.getElementById('quantColuna');
+      seletorColuna.innerHTML = '<option value="">— escolha a coluna —</option>' +
+        quantAtual.colunas.map(coluna =>
+          `<option value="${escapeHtml(coluna)}"${coluna === quantAtual.coluna ? ' selected' : ''}>${escapeHtml(coluna)}</option>`
+        ).join('');
+
+      const avisosEl = document.getElementById('quantAvisos');
+      if (quantAtual.avisos.length > 0) {
+        avisosEl.innerHTML = '⚠️ <div>' + quantAtual.avisos.map(escapeHtml).join('<br>') + '</div>';
+        avisosEl.classList.remove('hidden');
+      } else {
+        avisosEl.classList.add('hidden');
+      }
+
+      renderizarNaoReconhecidos();
+      renderizarSecoes();
+      mostrar('cardQuant');
+    }
+
+    function renderizarNaoReconhecidos() {
+      const bloco = document.getElementById('nrBloco');
+      const lista = document.getElementById('nrLista');
+      if (quantAtual.naoReconhecidos.length === 0) {
+        bloco.classList.add('hidden');
+        return;
+      }
+      bloco.classList.remove('hidden');
+      lista.innerHTML = quantAtual.naoReconhecidos.map((nr, idx) => `
+        <div class="nr-linha" data-nr="${idx}">
+          <span class="nr-texto">${escapeHtml(nr.texto)}</span>
+          <span class="nr-meta" title="${escapeHtml(nr.pacientes.join('\n'))}">
+            ${escapeHtml(ROTULOS_REFEICAO[nr.refeicao] || nr.refeicao)} · ${nr.qtd} paciente(s)
+          </span>
+          <select class="sel-item" data-sel="${idx}">${opcoesDeItens(nr.refeicao)}</select>
+          <label><input type="checkbox" data-lembrar="${idx}" checked> lembrar</label>
+          <button class="btn-mini aplicar" onclick="aplicarNr(${idx})">Aplicar</button>
+          <button class="btn-mini" onclick="ignorarNr(${idx})">Ignorar</button>
+        </div>
+      `).join('');
+    }
+
+    function encontrarSecao(chave) {
+      return quantAtual.secoes.find(secao => secao.secao === chave);
+    }
+
+    function adicionarContagem(secaoChave, nome, qtd, origens) {
+      const secao = encontrarSecao(secaoChave);
+      if (!secao) return;
+      const existente = secao.itens.find(item => item.nome === nome);
+      if (existente) {
+        existente.qtd += qtd;
+        existente.origens = (existente.origens || []).concat(origens || []);
+      } else {
+        const grupoCatalogo = quantAtual.catalogo.find(grupo => grupo.secao === secaoChave);
+        const doCatalogo = grupoCatalogo && grupoCatalogo.itens.find(item => item.nome === nome);
+        secao.itens.push({
+          secao: secaoChave,
+          id: doCatalogo ? doCatalogo.id : '',
+          nome: nome,
+          qtd: qtd,
+          origens: origens || []
+        });
+      }
+    }
+
+    function aplicarNr(idx) {
+      const nr = quantAtual.naoReconhecidos[idx];
+      const seletor = document.querySelector(`[data-sel="${idx}"]`);
+      const lembrar = document.querySelector(`[data-lembrar="${idx}"]`).checked;
+      let valor = seletor.value;
+
+      if (valor === '__novo__') {
+        const nome = (prompt('Nome do novo item (será criado na seção de ' +
+          (ROTULOS_REFEICAO[nr.refeicao] || nr.refeicao) + '):') || '').trim();
+        if (!nome) return;
+        quantAtual.itensNovos.push({ secao: nr.refeicao, id: '', nome: nome });
+        const grupo = quantAtual.catalogo.find(g => g.secao === nr.refeicao);
+        if (grupo) grupo.itens.push({ id: '', nome: nome });
+        valor = nr.refeicao + '||' + nome;
+      }
+
+      const separador = valor.indexOf('||');
+      const secaoChave = valor.slice(0, separador);
+      const nome = valor.slice(separador + 2);
+
+      adicionarContagem(secaoChave, nome, nr.qtd,
+        nr.pacientes.map(p => ({ leito: '', paciente: p, refeicao: nr.refeicao, texto: nr.texto })));
+
+      if (lembrar) {
+        quantAtual.regrasNovas.push({ refeicoes: nr.refeicao, padrao: nr.texto, itens: nome });
+      }
+
+      quantAtual.naoReconhecidos.splice(idx, 1);
+      renderizarNaoReconhecidos();
+      renderizarSecoes();
+    }
+
+    function ignorarNr(idx) {
+      quantAtual.naoReconhecidos.splice(idx, 1);
+      renderizarNaoReconhecidos();
+    }
+
+    function renderizarSecoes() {
+      const container = document.getElementById('quantSecoes');
+      container.innerHTML = quantAtual.secoes.map((secao, sIdx) => {
+        const linhas = secao.itens.map((item, iIdx) => {
+          const origens = (item.origens || []);
+          const detalhes = origens.length > 0 ? `
+            <details class="origens">
+              <summary>▸ ${origens.length} origem(ns)</summary>
+              <ul>${origens.map(origem => `<li>${escapeHtml((origem.leito ? origem.leito + ' — ' : '') + origem.paciente)}
+                (${escapeHtml(ROTULOS_REFEICAO[origem.refeicao] || origem.refeicao)}): ${escapeHtml(origem.texto)}</li>`).join('')}</ul>
+            </details>` : '';
+          return `
+            <tr>
+              <td>${escapeHtml(item.nome)}${item.id ? ` <span class="nr-meta">(ID ${escapeHtml(item.id)})</span>` : ''}</td>
+              <td class="col-qtd"><input class="qtd" type="number" min="0" value="${item.qtd}"
+                data-s="${sIdx}" data-i="${iIdx}" onchange="atualizarQtd(this)"></td>
+              <td>${detalhes}</td>
+            </tr>`;
+        }).join('');
+        return `
+          <div class="secao-quant">
+            <h3>${escapeHtml(secao.rotulo)}</h3>
+            <table class="quant"><tbody>
+              ${linhas || '<tr><td class="nr-meta">nenhum item</td></tr>'}
+            </tbody></table>
+            <div class="add-item-row">
+              <select data-add-sel="${sIdx}">${opcoesDeItensDaSecao(secao.secao)}</select>
+              <button class="btn-mini" onclick="adicionarItemManual(${sIdx})">+ Adicionar item</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function opcoesDeItensDaSecao(secaoChave) {
+      const grupo = quantAtual.catalogo.find(g => g.secao === secaoChave);
+      if (!grupo) return '';
+      return grupo.itens.map(item =>
+        `<option value="${escapeHtml(item.nome)}">${escapeHtml(item.nome)}</option>`).join('');
+    }
+
+    function adicionarItemManual(sIdx) {
+      const secao = quantAtual.secoes[sIdx];
+      const seletor = document.querySelector(`[data-add-sel="${sIdx}"]`);
+      if (!seletor || !seletor.value) return;
+      adicionarContagem(secao.secao, seletor.value, 1, []);
+      renderizarSecoes();
+    }
+
+    function atualizarQtd(input) {
+      const secao = quantAtual.secoes[Number(input.dataset.s)];
+      const item = secao && secao.itens[Number(input.dataset.i)];
+      if (item) item.qtd = Math.max(0, parseInt(input.value, 10) || 0);
+    }
+
+    function voltarParaPreview() {
+      esconder('cardQuant');
+      mostrar('cardPreview');
+    }
+
+    function gravarQuantitativo() {
+      const coluna = document.getElementById('quantColuna').value;
+      if (!coluna) {
+        alert('Escolha em qual coluna do quantitativo essa clínica entra.');
+        return;
+      }
+      const btn = document.getElementById('btnGravarQuant');
+      btn.disabled = true;
+      btn.textContent = 'Gravando...';
+
+      const contagens = [];
+      quantAtual.secoes.forEach(secao => {
+        secao.itens.forEach(item => {
+          if (item.qtd > 0) {
+            contagens.push({ secao: secao.secao, id: item.id, nome: item.nome, qtd: item.qtd });
+          }
+        });
+      });
+
+      google.script.run
+        .withSuccessHandler(resposta => {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar e gravar tudo';
+          if (!resposta.sucesso) {
+            mostrarErro(resposta.erro || 'Erro ao gravar o quantitativo.');
+            return;
+          }
+          esconder('cardQuant');
+          let mensagem = resposta.itensGravados + ' item(ns) gravados na aba "' + resposta.aba +
+            '" (coluna ' + resposta.coluna + ')';
+          if (resposta.linhasBase > 0) {
+            mensagem += ' e ' + resposta.linhasBase + ' paciente(s) na aba Base';
+          }
+          mensagem += '.';
+          if (resposta.pendencias && resposta.pendencias.length > 0) {
+            mensagem += ' Pendências: ' + resposta.pendencias.join('; ');
+          }
+          document.getElementById('mensagemSucesso').textContent = mensagem;
+          mostrar('cardSucesso');
+        })
+        .withFailureHandler(erro => {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar e gravar tudo';
+          mostrarErro('Erro ao gravar: ' + erro.message);
+        })
+        .salvarQuantitativo({
+          data: dadosAtuais.data,
+          clinica: dadosAtuais.clinica,
+          coluna: coluna,
+          contagens: contagens,
+          pacientes: dadosAtuais.pacientes,
+          regrasNovas: quantAtual.regrasNovas,
+          itensNovos: quantAtual.itensNovos
+        });
     }
 
     function mostrarErro(msg) {
