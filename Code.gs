@@ -310,13 +310,13 @@ const COLUNA_DESJEJUM = 3;
 
 // Célula "PRONT/PACIENTE/DAT.NASC." já vem isolada por coluna aqui, então
 // não precisa dos marcadores de via/rota usados no parsing por texto corrido.
-const padraoIdentidadeCelula = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(.+)$/i;
+const padraoIdentidadeCelula = /^(\d{3,12})\s*-?\s*(.+?)-?\s*(\d{1,3}\s*ano\(?s?\)?.*?)-?\s*(.+)$/i;
 
 // Assinatura de "início de outro paciente" (prontuário + idade) encontrada NO
 // MEIO do texto de uma célula que deveria conter só diagnóstico/refeição —
 // indica que duas linhas/pacientes se fundiram na extração (célula ou linha
 // deslocada pelo reconhecimento de tabela do Google).
-const padraoIdentidadeEmbutida = /\d{3,6}\s*-\s*[^\d@]{2,80}?-?\s*\d{1,3}\s*ano\(s\)/i;
+const padraoIdentidadeEmbutida = /\d{3,12}\s*-?\s*[^@]{2,80}?-?\s*\d{1,3}\s*ano\(?s?\)?/i;
 
 // Texto de cabeçalho de coluna que às vezes vaza para dentro de uma célula
 // de dados quando a extração perde o alinhamento das colunas.
@@ -427,14 +427,14 @@ function parsearPacientesDeTabela(linhasTabela) {
 // Marca o início de um paciente em QUALQUER ponto do texto (não apenas no
 // início de uma linha). A extração de texto do Google Docs não garante que
 // o prontuário de um novo paciente comece em uma linha própria — ele pode
-// ficar colado ao final da última célula do paciente anterior. Ancorar a
+// fica colado ao final da última célula do paciente anterior. Ancorar a
 // busca em início de linha fazia vários pacientes serem "engolidos" pelo
 // bloco anterior, misturando os dados de refeição de pacientes diferentes.
-const padraoInicioPacienteGlobal = /\d{3,6}\s*-\s*[^\d@][^@]{1,80}?-\s*\d{1,3}\s*ano\(s\)/gi;
+const padraoInicioPacienteGlobal = /\d{3,12}\s*-?\s*[^@]{2,120}?-?\s*\d{1,3}\s*ano\(?s?\)?/gi;
 // O grupo do nome da mãe (4) para de capturar antes do diagnóstico começar. O diagnóstico
 // pode começar tanto com o marcador isolado de via quanto com a via colada
 // sem espaço à primeira palavra do diagnóstico (ex: "ORALDIETA ZERO").
-const padraoIdentidade = /^(\d{3,6})\s*-\s*(.+?)-\s*(\d{1,3}\s*ano\(s\).*?)-\s*(.+?)(?=@@ROTA_(?:ORAL|ENTERAL|MISTA)@@|(?:ORAL|ENTERAL|MISTA)[A-ZÀ-Ý]|$)/i;
+const padraoIdentidade = /^(\d{3,12})\s*-?\s*(.+?)-?\s*(\d{1,3}\s*ano\(?s?\)?.*?)-?\s*(.+?)(?=@@ROTA_(?:ORAL|ENTERAL|MISTA)@@|(?:ORAL|ENTERAL|MISTA)[A-ZÀ-Ý]|$)/i;
 
 /**
  * Identifica cada bloco de paciente no texto e extrai:
