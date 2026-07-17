@@ -573,6 +573,39 @@ function sanitizarValorCelula(valor) {
 }
 
 /**
+ * Grava uma linha por paciente na aba 'Base'. Não gerencia lock — quem
+ * chama (salvarNaPlanilha ou salvarQuantitativo) é responsável por isso.
+ * Devolve o número de linhas gravadas.
+ */
+function gravarPacientesNaBase(dados) {
+  const sheet = garantirAbaConfigurada();
+
+  const linhas = dados.pacientes.map(p => [
+    dados.data,
+    dados.clinica,
+    p.leito,
+    p.prontuario,
+    p.nome,
+    p.idade,
+    p.diagnostico,
+    p.refeicoes.DESJEJUM,
+    p.refeicoes.COLACAO,
+    p.refeicoes.ALMOCO,
+    p.refeicoes.LANCHE,
+    p.refeicoes.JANTAR,
+    p.refeicoes.CEIA
+  ].map(sanitizarValorCelula));
+
+  if (linhas.length > 0) {
+    const proximaLinha = sheet.getLastRow() + 1;
+    sheet.getRange(proximaLinha, 1, linhas.length, linhas[0].length)
+      .setValues(linhas);
+  }
+
+  return linhas.length;
+}
+
+/**
  * Recebe os dados já revisados/corrigidos pelo admin no frontend
  * e grava uma linha por paciente na planilha vinculada.
  */
@@ -592,33 +625,9 @@ function salvarNaPlanilha(dados) {
   }
 
   try {
-    const sheet = garantirAbaConfigurada();
-
-    const linhas = dados.pacientes.map(p => [
-      dados.data,
-      dados.clinica,
-      p.leito,
-      p.prontuario,
-      p.nome,
-      p.idade,
-      p.diagnostico,
-      p.refeicoes.DESJEJUM,
-      p.refeicoes.COLACAO,
-      p.refeicoes.ALMOCO,
-      p.refeicoes.LANCHE,
-      p.refeicoes.JANTAR,
-      p.refeicoes.CEIA
-    ].map(sanitizarValorCelula));
-
-    if (linhas.length > 0) {
-      const proximaLinha = sheet.getLastRow() + 1;
-      sheet.getRange(proximaLinha, 1, linhas.length, linhas[0].length)
-        .setValues(linhas);
-    }
-
     return {
       sucesso: true,
-      linhasGravadas: linhas.length
+      linhasGravadas: gravarPacientesNaBase(dados)
     };
   } catch (erro) {
     return {

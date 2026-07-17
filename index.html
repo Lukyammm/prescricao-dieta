@@ -1,317 +1,191 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
   <base target="_top">
   <meta charset="utf-8">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f4f6f3">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --azul: #4f46e5;
-      --azul-escuro: #4338ca;
-      --azul-claro: #eef2ff;
-      --verde: #16a34a;
-      --verde-escuro: #15803d;
-      --vermelho: #dc2626;
-      --cinza-bg-1: #f8fafc;
-      --cinza-bg-2: #eef1f6;
-      --cinza-borda: #e2e6ee;
-      --cinza-borda-forte: #cbd2e0;
-      --texto: #1a1f2b;
-      --texto-suave: #64748b;
-      --sombra-card: 0 1px 2px rgba(16,24,40,0.03), 0 8px 24px -12px rgba(16,24,40,0.10);
-      --sombra-hover: 0 2px 6px rgba(16,24,40,0.06), 0 14px 32px -14px rgba(16,24,40,0.16);
+    /* Identidade visual compartilhada com o app diet-request (NutriSim):
+       mesmos tokens de cor, tipografia, topbar, cards, botoes e wizard. */
+    :root{
+      --ink:#1d2a24; --paper:#f4f6f3; --card:#ffffff; --line:#e0e6e0; --mut:#68766e;
+      --pri:#0e7a5f; --pri-d:#0a5a46; --pri-s:#e3f0ea;
+      --red:#b3402e; --red-s:#f7e8e5; --amber:#a06e12; --amber-s:#f7efdd;
+      --blue:#2b6cb0; --blue-s:#e6eef7;
+      --r:12px; --sh:0 1px 2px rgba(29,42,36,.06),0 4px 14px rgba(29,42,36,.05);
+      --sh-lift:0 6px 16px rgba(29,42,36,.10),0 2px 5px rgba(29,42,36,.06);
+      --disp:'Inter',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif;
+      --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+      --tap:44px;
+      --sa-t:env(safe-area-inset-top,0px); --sa-r:env(safe-area-inset-right,0px);
+      --sa-b:env(safe-area-inset-bottom,0px); --sa-l:env(safe-area-inset-left,0px);
     }
-    * { box-sizing: border-box; }
-    body {
-      font-family: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      background:
-        radial-gradient(1100px 420px at 10% -10%, #eef0ff 0%, transparent 60%),
-        radial-gradient(900px 380px at 100% 0%, #eafbf1 0%, transparent 55%),
-        var(--cinza-bg-1);
-      background-attachment: fixed;
-      margin: 0;
-      padding: 32px 24px 60px;
-      color: var(--texto);
-      -webkit-font-smoothing: antialiased;
-    }
-    .container {
-      max-width: 1140px;
-      margin: 0 auto;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 28px;
-    }
-    header h1 {
-      font-size: 21px;
-      font-weight: 800;
-      margin: 0;
-      letter-spacing: -0.01em;
-    }
-    header p {
-      margin: 2px 0 0;
-      font-size: 13.5px;
-      color: var(--texto-suave);
-    }
-    .badge {
-      width: 44px;
-      height: 44px;
-      border-radius: 13px;
-      background: linear-gradient(150deg, var(--azul), #7c3aed);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 800;
-      font-size: 15px;
-      letter-spacing: -0.02em;
-      box-shadow: 0 6px 16px -4px rgba(79,70,229,0.45);
-    }
-    .card {
-      background: rgba(255,255,255,0.86);
-      backdrop-filter: blur(6px);
-      border: 1px solid var(--cinza-borda);
-      border-radius: 18px;
-      padding: 28px;
-      margin-bottom: 20px;
-      box-shadow: var(--sombra-card);
-      transition: box-shadow 0.2s ease;
-    }
-    .upload-zone {
-      border: 2px dashed var(--cinza-borda-forte);
-      border-radius: 14px;
-      padding: 48px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: 0.18s ease;
-      background: linear-gradient(180deg, #fbfcff, #f6f8fc);
-    }
-    .upload-zone:hover, .upload-zone.dragover {
-      border-color: var(--azul);
-      background: var(--azul-claro);
-      transform: translateY(-1px);
-    }
-    .upload-zone .icon-circle {
-      width: 56px;
-      height: 56px;
-      margin: 0 auto 12px;
-      border-radius: 50%;
-      background: var(--azul-claro);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: 0.18s ease;
-    }
-    .upload-zone:hover .icon-circle, .upload-zone.dragover .icon-circle {
-      background: white;
-    }
-    .upload-zone p { margin: 4px 0; font-size: 14.5px; }
-    .upload-zone .sub { color: var(--texto-suave); font-size: 12.5px; }
-    #fileInput { display: none; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+    body{font-family:var(--body);background:var(--paper);color:var(--ink);font-size:16px;line-height:1.55;min-height:100vh;min-height:100dvh;overflow-x:hidden;overflow-wrap:break-word;-webkit-tap-highlight-color:transparent}
+    button{font-family:inherit;cursor:pointer;touch-action:manipulation}
+    input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);max-width:100%}
+    h1,h2,h3{font-family:var(--disp);line-height:1.2;letter-spacing:-.01em}
+    :focus-visible{outline:2px solid var(--pri);outline-offset:2px;border-radius:4px}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+    .hidden{display:none!important}
+    .muted{color:var(--mut)}
+    .small{font-size:13px}
+    .mt{margin-top:14px}
 
-    .btn {
-      border: none;
-      border-radius: 10px;
-      padding: 11px 22px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: 0.15s ease;
-      font-family: inherit;
-    }
-    .btn-primary { background: var(--azul); color: white; box-shadow: 0 4px 12px -3px rgba(79,70,229,0.45); }
-    .btn-primary:hover { background: var(--azul-escuro); transform: translateY(-1px); box-shadow: 0 6px 16px -3px rgba(79,70,229,0.5); }
-    .btn-success { background: var(--verde); color: white; box-shadow: 0 4px 12px -3px rgba(22,163,74,0.4); }
-    .btn-success:hover { background: var(--verde-escuro); transform: translateY(-1px); box-shadow: 0 6px 16px -3px rgba(22,163,74,0.45); }
-    .btn-outline {
-      background: white;
-      border: 1px solid var(--cinza-borda-forte);
-      color: var(--texto);
-    }
-    .btn-outline:hover { background: var(--cinza-bg-2); border-color: #b7c0d4; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    /* ---------- topbar ---------- */
+    .topbar{position:sticky;top:0;z-index:40;background:rgba(244,246,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:var(--sa-t)}
+    .topbar .in{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:12px max(18px,var(--sa-r)) 12px max(18px,var(--sa-l))}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:0}
+    .brand .dot{width:34px;height:34px;color:var(--pri);display:grid;place-items:center;flex:0 0 auto}
+    .brand .dot svg{width:26px;height:26px}
+    .brand b{font-family:var(--disp);font-weight:600;font-size:17px;white-space:nowrap}
+    .brand small{display:block;color:var(--mut);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
 
-    .status-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 18px;
-      font-size: 13.5px;
-      color: var(--texto-suave);
-    }
-    .spinner {
-      width: 17px; height: 17px;
-      border: 2.5px solid #dfe3ee;
-      border-top-color: var(--azul);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ---------- layout ---------- */
+    main{max-width:1120px;margin:0 auto;padding:22px max(18px,var(--sa-r)) calc(60px + var(--sa-b)) max(18px,var(--sa-l))}
+    main h1{font-size:clamp(21px,5.5vw,24px);margin:4px 0 4px}
+    .lead{color:var(--mut);font-size:13.5px;margin-bottom:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:20px;margin-bottom:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 
-    .meta-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-      font-size: 13px;
-      flex-wrap: wrap;
-    }
-    .meta-row div {
-      background: var(--cinza-bg-2);
-      border: 1px solid var(--cinza-borda);
-      border-radius: 10px;
-      padding: 8px 14px;
-    }
-    .meta-row div strong {
-      display: block;
-      font-size: 10.5px;
-      color: var(--texto-suave);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 2px;
-    }
-    .meta-row div span { font-weight: 600; }
+    /* ---------- wizard (etapas) ---------- */
+    .steplabel{display:flex;justify-content:space-between;color:var(--mut);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;margin-bottom:6px}
+    .steps{display:flex;gap:6px;margin:4px 0 20px}
+    .steps span{flex:1;height:4px;border-radius:99px;background:var(--line)}
+    .steps span.on{background:var(--pri)}
 
-    .alerta {
-      background: #fff8eb;
-      border: 1px solid #fde3a7;
-      border-radius: 12px;
-      padding: 13px 16px;
-      font-size: 13.5px;
-      margin-bottom: 18px;
-      display: flex;
-      gap: 10px;
-      line-height: 1.5;
-    }
-    .alerta.erro { background: #fef1f1; border-color: #f8c9c9; }
-    .alerta.sucesso { background: #edfcf3; border-color: #b7e9cb; }
+    /* ---------- botoes ---------- */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--pri);color:#fff;border:1px solid var(--pri);border-radius:10px;padding:11px 18px;min-height:48px;font-weight:600;font-size:15px;transition:.15s}
+    .btn:hover{background:var(--pri-d)}
+    .btn:disabled{opacity:.55;cursor:default;transform:none!important;box-shadow:none!important}
+    .btn-primary{background:var(--pri);border-color:var(--pri);color:#fff}
+    .btn-primary:hover{background:var(--pri-d)}
+    .btn-success{background:var(--pri);border-color:var(--pri);color:#fff}
+    .btn-success:hover{background:var(--pri-d)}
+    .btn-outline{background:var(--card);color:var(--ink);border-color:var(--line)}
+    .btn-outline:hover{background:var(--card);border-color:var(--mut)}
+    .btn-mini{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 13px;min-height:var(--tap);font-size:13.5px;font-weight:600;transition:.12s;color:var(--ink)}
+    .btn-mini:hover{border-color:var(--mut)}
+    .btn-mini.aplicar{background:var(--pri);border-color:var(--pri);color:#fff}
+    .btn-mini.aplicar:hover{background:var(--pri-d)}
 
-    tr.linha-suspeita td { background: #fff8eb; }
-    .aviso-icone {
-      cursor: help;
-      font-size: 14px;
-    }
+    /* ---------- upload ---------- */
+    .upload-zone{border:1.5px dashed var(--line);border-radius:14px;padding:44px 20px;text-align:center;cursor:pointer;transition:.16s ease;background:#fff}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--pri);background:var(--pri-s);transform:translateY(-2px);box-shadow:var(--sh-lift)}
+    .upload-zone .icon-circle{width:60px;height:60px;margin:0 auto 12px;border-radius:16px;background:var(--pri-s);color:var(--pri-d);display:grid;place-items:center;transition:.16s ease}
+    .upload-zone:hover .icon-circle,.upload-zone.dragover .icon-circle{background:#fff;transform:scale(1.05)}
+    .upload-zone p{margin:4px 0;font-size:14.5px}
+    .upload-zone p strong{font-weight:600}
+    .upload-zone .sub{color:var(--mut);font-size:12.5px}
+    #fileInput{display:none}
 
-    table.preview {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12.5px;
-    }
-    table.preview th {
-      background: var(--cinza-bg-2);
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--cinza-borda);
-      position: sticky;
-      top: 0;
-      white-space: nowrap;
-      font-weight: 700;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      color: var(--texto-suave);
-      z-index: 1;
-    }
-    table.preview tbody tr:hover { background: #fafbff; }
-    table.preview tbody tr:nth-child(even) { background: #fbfcfe; }
-    table.preview tbody tr:nth-child(even):hover { background: #f6f8ff; }
-    table.preview td {
-      padding: 9px 12px;
-      border-bottom: 1px solid #eef1f6;
-      vertical-align: top;
-    }
-    table.preview td[contenteditable="true"] {
-      cursor: text;
-      min-width: 90px;
-      border-radius: 6px;
-      transition: background 0.12s ease, box-shadow 0.12s ease;
-    }
-    table.preview td[contenteditable="true"]:hover {
-      background: #f7f8fd;
-    }
-    table.preview td[contenteditable="true"]:focus {
-      background: #fffdf0;
-      outline: 2px solid #fbbf24;
-      outline-offset: -2px;
-    }
-    .table-scroll {
-      max-height: 520px;
-      overflow: auto;
-      border: 1px solid var(--cinza-borda);
-      border-radius: 12px;
-    }
-    .col-nome { min-width: 160px; }
-    .col-leito { min-width: 70px; }
-    .actions-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 18px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .hint {
-      font-size: 12px;
-      color: var(--texto-suave);
-    }
-    .hidden { display: none !important; }
+    .status-bar{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:13.5px;color:var(--mut)}
+    .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:sp .7s linear infinite}
+    @keyframes sp{to{transform:rotate(360deg)}}
 
-    .debug-box {
-      margin-top: 18px;
-      border-top: 1px solid var(--cinza-borda);
-      padding-top: 14px;
-    }
-    .debug-box summary {
-      cursor: pointer;
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--texto-suave);
-      user-select: none;
-      list-style: none;
-    }
-    .debug-box summary::-webkit-details-marker { display: none; }
-    .debug-box summary::before {
-      content: "▸";
-      display: inline-block;
-      margin-right: 6px;
-      transition: transform 0.15s ease;
-    }
-    .debug-box[open] summary::before { transform: rotate(90deg); }
-    .debug-box textarea {
-      width: 100%;
-      min-height: 220px;
-      margin-top: 4px;
-      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 11.5px;
-      line-height: 1.45;
-      white-space: pre;
-      border: 1px solid var(--cinza-borda);
-      border-radius: 10px;
-      padding: 12px;
-      color: var(--texto);
-      background: #fbfcfd;
-      resize: vertical;
+    /* ---------- meta / chips ---------- */
+    .meta-row{display:flex;gap:10px;margin-bottom:18px;font-size:13.5px;flex-wrap:wrap}
+    .meta-row>div{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 14px}
+    .meta-row strong{display:block;font-size:10.5px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+    .meta-row span{font-weight:600}
+
+    /* ---------- alertas (callouts) ---------- */
+    .alerta{border-radius:10px;padding:11px 14px;font-size:13.5px;margin-bottom:16px;display:flex;gap:10px;line-height:1.5;background:var(--blue-s);color:var(--blue);border:1px solid rgba(43,108,176,.25)}
+    .alerta.erro{background:var(--red-s);color:var(--red);border-color:rgba(179,64,46,.25)}
+    .alerta.sucesso{background:var(--pri-s);color:var(--pri-d);border-color:rgba(14,122,95,.25)}
+
+    tr.linha-suspeita td{background:var(--amber-s)}
+    .aviso-icone{cursor:help;font-size:14px}
+
+    /* ---------- tabela de pacientes ---------- */
+    table.preview{width:100%;border-collapse:collapse;font-size:13px}
+    table.preview th{background:var(--paper);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;white-space:nowrap;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);z-index:1}
+    table.preview td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+    table.preview tbody tr:hover td{background:var(--paper)}
+    table.preview td[contenteditable="true"]{cursor:text;min-width:90px;border-radius:6px;transition:background .12s ease,box-shadow .12s ease}
+    table.preview td[contenteditable="true"]:hover{background:var(--paper)}
+    table.preview td[contenteditable="true"]:focus{background:#fff;outline:none;box-shadow:0 0 0 3px rgba(14,122,95,.12);border-radius:6px}
+    .table-scroll{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:var(--r)}
+    .col-nome{min-width:160px}
+    .col-leito{min-width:70px}
+    .actions-footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px;flex-wrap:wrap;gap:12px}
+    .hint{font-size:12.5px;color:var(--mut)}
+
+    /* ---------- debug ---------- */
+    .debug-box{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+    .debug-box summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--mut);user-select:none;list-style:none}
+    .debug-box summary::-webkit-details-marker{display:none}
+    .debug-box summary::before{content:"\25B8";display:inline-block;margin-right:6px;transition:transform .15s ease}
+    .debug-box[open] summary::before{transform:rotate(90deg)}
+    .debug-box textarea{width:100%;min-height:220px;margin-top:4px;font-family:var(--mono);font-size:11.5px;line-height:1.45;white-space:pre;border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--ink);background:var(--paper);resize:vertical}
+
+    /* ---------- quantitativo ---------- */
+    .secao-quant{margin-bottom:22px}
+    .secao-quant h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);font-weight:600;margin:0 0 8px;border-bottom:2px solid var(--line);padding-bottom:6px}
+    table.quant{width:100%;border-collapse:collapse;font-size:13.5px}
+    table.quant td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+    table.quant tr:last-child td{border-bottom:0}
+    table.quant td.col-qtd{width:90px}
+    table.quant input.qtd{width:70px;padding:7px 8px;min-height:var(--tap);border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;text-align:center;font-variant-numeric:tabular-nums;background:#fff;transition:border-color .15s}
+    table.quant input.qtd:focus{border-color:var(--pri);outline:none;box-shadow:0 0 0 3px rgba(14,122,95,.12)}
+    table.quant .origens summary{cursor:pointer;font-size:12.5px;color:var(--mut);list-style:none}
+    table.quant .origens ul{margin:6px 0 0;padding-left:16px;font-size:12.5px;color:var(--mut)}
+    .add-item-row{display:flex;gap:8px;margin-top:8px;align-items:center}
+    select.sel-item,.add-item-row select{max-width:420px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-height:var(--tap);font-size:13.5px;font-family:inherit;background:#fff;transition:border-color .15s}
+    select.sel-item:focus,.add-item-row select:focus{border-color:var(--pri);outline:none;box-shadow:0 0 0 3px rgba(14,122,95,.12)}
+    #quantColuna{margin-top:2px;font-size:13.5px;font-weight:600;min-height:36px;padding:5px 8px}
+
+    .nr-bloco{background:var(--amber-s);border:1px solid rgba(160,110,18,.25);border-radius:var(--r);padding:14px 16px;margin-bottom:20px}
+    .nr-bloco h3{margin:0 0 8px;font-size:14.5px;color:var(--amber)}
+    .nr-linha{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 0;border-bottom:1px dashed rgba(160,110,18,.3);font-size:13.5px}
+    .nr-linha:last-child{border-bottom:none}
+    .nr-texto{font-weight:600}
+    .nr-meta{color:var(--mut);font-size:12.5px}
+    .nr-linha label{font-size:12.5px;color:var(--mut);display:flex;align-items:center;gap:5px}
+
+    /* ---------- sucesso ---------- */
+    .done{text-align:center;padding:26px 22px 18px}
+    .done .ok{width:62px;height:62px;border-radius:50%;background:var(--pri-s);color:var(--pri);display:grid;place-items:center;margin:0 auto 16px}
+    .done h2{font-size:21px;margin-bottom:8px}
+
+    @media(max-width:640px){
+      .card{padding:16px}
+      .actions-footer{flex-direction:column;align-items:stretch}
+      .actions-footer .row,.actions-footer>div{width:100%}
+      .actions-footer .btn{flex:1 1 auto}
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="badge">HUC</div>
-      <div>
-        <h1>Automação de Prescrição Dietética</h1>
-        <p>Envie o PDF do setor e revise antes de gravar na planilha</p>
-      </div>
-    </header>
+
+  <header class="topbar">
+    <div class="in">
+      <a class="brand" href="#" onclick="return false;">
+        <span class="dot" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.3 12.4 2.6 2.6 4.8-5.4"/></svg></span>
+        <span><b>NutriSim</b><small>Prescrição Dietética</small></span>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <h1>Quantitativo de refeições</h1>
+    <p class="lead">Envie o PDF do setor, revise os pacientes e grave o quantitativo na planilha — no mesmo formato do faturamento.</p>
+
+    <div class="steplabel" id="stepsLabel"><span>PDF</span><span>Pacientes</span><span>Quantitativo</span><span>Concluído</span></div>
+    <div class="steps" id="stepsBar"><span class="on"></span><span></span><span></span><span></span></div>
 
     <!-- ETAPA 1: UPLOAD -->
     <div class="card" id="cardUpload">
       <div class="upload-zone" id="uploadZone">
         <div class="icon-circle">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.8">
-            <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+            <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>
           </svg>
         </div>
         <p><strong>Clique para escolher o PDF</strong> ou arraste aqui</p>
@@ -328,7 +202,7 @@
     <!-- ETAPA 2: PRÉVIA / REVISÃO -->
     <div class="card hidden" id="cardPreview">
       <div class="alerta">
-        ⚠️ <div>Confira os dados extraídos antes de gravar. Clique em qualquer célula para corrigir — a ordem das refeições pode precisar de ajuste em alguns pacientes.</div>
+        ✏️ <div>Confira os dados extraídos antes de continuar. Clique em qualquer célula para corrigir — a ordem das refeições pode precisar de ajuste em alguns pacientes.</div>
       </div>
 
       <div class="alerta erro hidden" id="alertaModoFallback">
@@ -364,9 +238,10 @@
 
       <div class="actions-footer">
         <span class="hint">Edite diretamente na tabela se algo estiver fora do lugar</span>
-        <div style="display:flex; gap:10px;">
+        <div class="row">
           <button class="btn btn-outline" onclick="cancelarPreview()">Cancelar</button>
-          <button class="btn btn-success" id="btnConfirmar" onclick="confirmarGravacao()">Confirmar e gravar na planilha</button>
+          <button class="btn btn-outline" id="btnConfirmar" onclick="confirmarGravacao()">Gravar só a lista de pacientes</button>
+          <button class="btn btn-primary" id="btnQuant" onclick="gerarQuantitativoUI()">Gerar quantitativo →</button>
         </div>
       </div>
 
@@ -383,17 +258,65 @@
       </details>
     </div>
 
-    <!-- ETAPA 3: SUCESSO -->
-    <div class="card hidden" id="cardSucesso">
-      <div class="alerta sucesso">
-        ✅ <div id="mensagemSucesso"></div>
+    <!-- ETAPA 3: QUANTITATIVO (conferência das contagens por item) -->
+    <div class="card hidden" id="cardQuant">
+      <div class="alerta">
+        📊 <div>Confira o <strong>quantitativo</strong> gerado a partir das dietas — é o mesmo formato da planilha de faturamento
+        (quantos de cada item, por refeição). Ajuste as quantidades se necessário. Itens, regras de tradução e clínicas ficam nas
+        abas <strong>Itens</strong>, <strong>Regras</strong> e <strong>Clinicas</strong> da planilha e também podem ser editados por lá.</div>
       </div>
-      <button class="btn btn-primary" onclick="location.reload()">Enviar outro PDF</button>
+
+      <div class="meta-row">
+        <div><strong>Clínica (PDF)</strong><span id="quantClinica">—</span></div>
+        <div><strong>Data</strong><span id="quantData">—</span></div>
+        <div>
+          <strong>Coluna no quantitativo</strong>
+          <select id="quantColuna" class="sel-item"></select>
+        </div>
+      </div>
+
+      <div class="alerta erro hidden" id="quantAvisos"></div>
+
+      <div class="nr-bloco hidden" id="nrBloco">
+        <h3>⚠️ Textos que o sistema não reconheceu</h3>
+        <p class="hint" style="margin:0 0 8px;">Escolha em qual item cada um conta (ou ignore). Marcando “lembrar”, o sistema
+        aprende a regra e aplica automaticamente nos próximos PDFs.</p>
+        <div id="nrLista"></div>
+      </div>
+
+      <div id="quantSecoes"></div>
+
+      <div class="actions-footer">
+        <span class="hint">O quantitativo é gravado na aba “QDR dia-mês”, na coluna da clínica.</span>
+        <div class="row">
+          <button class="btn btn-outline" onclick="voltarParaPreview()">← Voltar aos pacientes</button>
+          <button class="btn btn-success" id="btnGravarQuant" onclick="gravarQuantitativo()">Confirmar e gravar tudo</button>
+        </div>
+      </div>
     </div>
-  </div>
+
+    <!-- ETAPA 4: SUCESSO -->
+    <div class="card hidden" id="cardSucesso">
+      <div class="done">
+        <div class="ok"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <h2>Tudo gravado</h2>
+        <p class="muted small" id="mensagemSucesso"></p>
+        <button class="btn mt" onclick="location.reload()">Enviar outro PDF</button>
+      </div>
+    </div>
+  </main>
 
   <script>
     let dadosAtuais = null;
+
+    // Barra de etapas do wizard (mesmo padrão do diet-request):
+    // acende os segmentos até a etapa atual e destaca o rótulo dela.
+    function marcarEtapa(n) {
+      document.querySelectorAll('#stepsBar span').forEach((s, i) =>
+        s.classList.toggle('on', i < n));
+      document.querySelectorAll('#stepsLabel span').forEach((s, i) =>
+        s.style.color = (i + 1 === n) ? 'var(--pri)' : '');
+    }
 
     const uploadZone = document.getElementById('uploadZone');
     const fileInput = document.getElementById('fileInput');
@@ -500,7 +423,9 @@
         tbody.appendChild(tr);
       });
 
+      esconder('cardUpload');
       mostrar('cardPreview');
+      marcarEtapa(2);
     }
 
     // captura edições feitas na tabela (registrado uma única vez, fora de
@@ -521,6 +446,8 @@
 
     function cancelarPreview() {
       esconder('cardPreview');
+      mostrar('cardUpload');
+      marcarEtapa(1);
       dadosAtuais = null;
       fileInput.value = '';
     }
@@ -537,19 +464,322 @@
             document.getElementById('mensagemSucesso').textContent =
               resposta.linhasGravadas + ' paciente(s) gravado(s) na planilha com sucesso.';
             mostrar('cardSucesso');
+            marcarEtapa(4);
           } else {
             mostrarErro(resposta.erro || 'Erro ao gravar na planilha.');
             mostrar('cardPreview');
           }
           btn.disabled = false;
-          btn.textContent = 'Confirmar e gravar na planilha';
+          btn.textContent = 'Gravar só a lista de pacientes';
         })
         .withFailureHandler(erro => {
           mostrarErro('Erro ao gravar: ' + erro.message);
           btn.disabled = false;
-          btn.textContent = 'Confirmar e gravar na planilha';
+          btn.textContent = 'Gravar só a lista de pacientes';
         })
         .salvarNaPlanilha(dadosAtuais);
+    }
+
+    // ==========================================================
+    // QUANTITATIVO
+    // ==========================================================
+    let quantAtual = null; // estado da tela de conferência do quantitativo
+
+    function gerarQuantitativoUI() {
+      const btn = document.getElementById('btnQuant');
+      btn.disabled = true;
+      btn.textContent = 'Classificando dietas...';
+
+      google.script.run
+        .withSuccessHandler(resposta => {
+          btn.disabled = false;
+          btn.textContent = 'Gerar quantitativo →';
+          if (!resposta.sucesso) {
+            mostrarErro(resposta.erro || 'Não foi possível gerar o quantitativo.');
+            return;
+          }
+          quantAtual = {
+            secoes: resposta.secoes,
+            naoReconhecidos: agruparNaoReconhecidos(resposta.naoReconhecidos),
+            avisos: resposta.avisos || [],
+            catalogo: resposta.catalogo,
+            colunas: resposta.colunas,
+            coluna: resposta.coluna,
+            regrasNovas: [],
+            itensNovos: []
+          };
+          esconder('cardPreview');
+          exibirQuantitativo();
+        })
+        .withFailureHandler(erro => {
+          btn.disabled = false;
+          btn.textContent = 'Gerar quantitativo →';
+          mostrarErro('Erro ao gerar quantitativo: ' + erro.message);
+        })
+        .montarQuantitativo({
+          clinica: dadosAtuais.clinica,
+          data: dadosAtuais.data,
+          pacientes: dadosAtuais.pacientes
+        });
+    }
+
+    // O mesmo texto desconhecido costuma se repetir em vários pacientes —
+    // agrupa para o admin decidir uma única vez.
+    function agruparNaoReconhecidos(lista) {
+      const grupos = {};
+      (lista || []).forEach(nr => {
+        const chave = nr.refeicao + '||' + nr.texto.toUpperCase().replace(/\s+/g, ' ').trim();
+        if (!grupos[chave]) {
+          grupos[chave] = { refeicao: nr.refeicao, texto: nr.texto, qtd: 0, pacientes: [] };
+        }
+        grupos[chave].qtd++;
+        grupos[chave].pacientes.push((nr.leito ? nr.leito + ' — ' : '') + nr.paciente);
+      });
+      return Object.keys(grupos).map(chave => grupos[chave]);
+    }
+
+    const ROTULOS_REFEICAO = {
+      DESJEJUM: 'Desjejum', COLACAO: 'Colação', ALMOCO: 'Almoço',
+      LANCHE: 'Lanche', JANTAR: 'Jantar', CEIA: 'Ceia'
+    };
+
+    function opcoesDeItens(secaoPreferida) {
+      let html = '';
+      const ordenado = quantAtual.catalogo.slice().sort((a, b) =>
+        (a.secao === secaoPreferida ? -1 : 0) - (b.secao === secaoPreferida ? -1 : 0));
+      ordenado.forEach(grupo => {
+        html += `<optgroup label="${escapeHtml(grupo.rotulo)}">`;
+        grupo.itens.forEach(item => {
+          html += `<option value="${escapeHtml(grupo.secao + '||' + item.nome)}">${escapeHtml(item.nome)}</option>`;
+        });
+        html += '</optgroup>';
+      });
+      html += '<optgroup label="—"><option value="__novo__">➕ Criar item novo...</option></optgroup>';
+      return html;
+    }
+
+    function exibirQuantitativo() {
+      document.getElementById('quantClinica').textContent = dadosAtuais.clinica;
+      document.getElementById('quantData').textContent = dadosAtuais.data;
+
+      const seletorColuna = document.getElementById('quantColuna');
+      seletorColuna.innerHTML = '<option value="">— escolha a coluna —</option>' +
+        quantAtual.colunas.map(coluna =>
+          `<option value="${escapeHtml(coluna)}"${coluna === quantAtual.coluna ? ' selected' : ''}>${escapeHtml(coluna)}</option>`
+        ).join('');
+
+      const avisosEl = document.getElementById('quantAvisos');
+      if (quantAtual.avisos.length > 0) {
+        avisosEl.innerHTML = '⚠️ <div>' + quantAtual.avisos.map(escapeHtml).join('<br>') + '</div>';
+        avisosEl.classList.remove('hidden');
+      } else {
+        avisosEl.classList.add('hidden');
+      }
+
+      renderizarNaoReconhecidos();
+      renderizarSecoes();
+      mostrar('cardQuant');
+      marcarEtapa(3);
+    }
+
+    function renderizarNaoReconhecidos() {
+      const bloco = document.getElementById('nrBloco');
+      const lista = document.getElementById('nrLista');
+      if (quantAtual.naoReconhecidos.length === 0) {
+        bloco.classList.add('hidden');
+        return;
+      }
+      bloco.classList.remove('hidden');
+      lista.innerHTML = quantAtual.naoReconhecidos.map((nr, idx) => `
+        <div class="nr-linha" data-nr="${idx}">
+          <span class="nr-texto">${escapeHtml(nr.texto)}</span>
+          <span class="nr-meta" title="${escapeHtml(nr.pacientes.join('\n'))}">
+            ${escapeHtml(ROTULOS_REFEICAO[nr.refeicao] || nr.refeicao)} · ${nr.qtd} paciente(s)
+          </span>
+          <select class="sel-item" data-sel="${idx}">${opcoesDeItens(nr.refeicao)}</select>
+          <label><input type="checkbox" data-lembrar="${idx}" checked> lembrar</label>
+          <button class="btn-mini aplicar" onclick="aplicarNr(${idx})">Aplicar</button>
+          <button class="btn-mini" onclick="ignorarNr(${idx})">Ignorar</button>
+        </div>
+      `).join('');
+    }
+
+    function encontrarSecao(chave) {
+      return quantAtual.secoes.find(secao => secao.secao === chave);
+    }
+
+    function adicionarContagem(secaoChave, nome, qtd, origens) {
+      const secao = encontrarSecao(secaoChave);
+      if (!secao) return;
+      const existente = secao.itens.find(item => item.nome === nome);
+      if (existente) {
+        existente.qtd += qtd;
+        existente.origens = (existente.origens || []).concat(origens || []);
+      } else {
+        const grupoCatalogo = quantAtual.catalogo.find(grupo => grupo.secao === secaoChave);
+        const doCatalogo = grupoCatalogo && grupoCatalogo.itens.find(item => item.nome === nome);
+        secao.itens.push({
+          secao: secaoChave,
+          id: doCatalogo ? doCatalogo.id : '',
+          nome: nome,
+          qtd: qtd,
+          origens: origens || []
+        });
+      }
+    }
+
+    function aplicarNr(idx) {
+      const nr = quantAtual.naoReconhecidos[idx];
+      const seletor = document.querySelector(`[data-sel="${idx}"]`);
+      const lembrar = document.querySelector(`[data-lembrar="${idx}"]`).checked;
+      let valor = seletor.value;
+
+      if (valor === '__novo__') {
+        const nome = (prompt('Nome do novo item (será criado na seção de ' +
+          (ROTULOS_REFEICAO[nr.refeicao] || nr.refeicao) + '):') || '').trim();
+        if (!nome) return;
+        quantAtual.itensNovos.push({ secao: nr.refeicao, id: '', nome: nome });
+        const grupo = quantAtual.catalogo.find(g => g.secao === nr.refeicao);
+        if (grupo) grupo.itens.push({ id: '', nome: nome });
+        valor = nr.refeicao + '||' + nome;
+      }
+
+      const separador = valor.indexOf('||');
+      const secaoChave = valor.slice(0, separador);
+      const nome = valor.slice(separador + 2);
+
+      adicionarContagem(secaoChave, nome, nr.qtd,
+        nr.pacientes.map(p => ({ leito: '', paciente: p, refeicao: nr.refeicao, texto: nr.texto })));
+
+      if (lembrar) {
+        quantAtual.regrasNovas.push({ refeicoes: nr.refeicao, padrao: nr.texto, itens: nome });
+      }
+
+      quantAtual.naoReconhecidos.splice(idx, 1);
+      renderizarNaoReconhecidos();
+      renderizarSecoes();
+    }
+
+    function ignorarNr(idx) {
+      quantAtual.naoReconhecidos.splice(idx, 1);
+      renderizarNaoReconhecidos();
+    }
+
+    function renderizarSecoes() {
+      const container = document.getElementById('quantSecoes');
+      container.innerHTML = quantAtual.secoes.map((secao, sIdx) => {
+        const linhas = secao.itens.map((item, iIdx) => {
+          const origens = (item.origens || []);
+          const detalhes = origens.length > 0 ? `
+            <details class="origens">
+              <summary>▸ ${origens.length} origem(ns)</summary>
+              <ul>${origens.map(origem => `<li>${escapeHtml((origem.leito ? origem.leito + ' — ' : '') + origem.paciente)}
+                (${escapeHtml(ROTULOS_REFEICAO[origem.refeicao] || origem.refeicao)}): ${escapeHtml(origem.texto)}</li>`).join('')}</ul>
+            </details>` : '';
+          return `
+            <tr>
+              <td>${escapeHtml(item.nome)}${item.id ? ` <span class="nr-meta">(ID ${escapeHtml(item.id)})</span>` : ''}</td>
+              <td class="col-qtd"><input class="qtd" type="number" min="0" value="${item.qtd}"
+                data-s="${sIdx}" data-i="${iIdx}" onchange="atualizarQtd(this)"></td>
+              <td>${detalhes}</td>
+            </tr>`;
+        }).join('');
+        return `
+          <div class="secao-quant">
+            <h3>${escapeHtml(secao.rotulo)}</h3>
+            <table class="quant"><tbody>
+              ${linhas || '<tr><td class="nr-meta">nenhum item</td></tr>'}
+            </tbody></table>
+            <div class="add-item-row">
+              <select data-add-sel="${sIdx}">${opcoesDeItensDaSecao(secao.secao)}</select>
+              <button class="btn-mini" onclick="adicionarItemManual(${sIdx})">+ Adicionar item</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function opcoesDeItensDaSecao(secaoChave) {
+      const grupo = quantAtual.catalogo.find(g => g.secao === secaoChave);
+      if (!grupo) return '';
+      return grupo.itens.map(item =>
+        `<option value="${escapeHtml(item.nome)}">${escapeHtml(item.nome)}</option>`).join('');
+    }
+
+    function adicionarItemManual(sIdx) {
+      const secao = quantAtual.secoes[sIdx];
+      const seletor = document.querySelector(`[data-add-sel="${sIdx}"]`);
+      if (!seletor || !seletor.value) return;
+      adicionarContagem(secao.secao, seletor.value, 1, []);
+      renderizarSecoes();
+    }
+
+    function atualizarQtd(input) {
+      const secao = quantAtual.secoes[Number(input.dataset.s)];
+      const item = secao && secao.itens[Number(input.dataset.i)];
+      if (item) item.qtd = Math.max(0, parseInt(input.value, 10) || 0);
+    }
+
+    function voltarParaPreview() {
+      esconder('cardQuant');
+      mostrar('cardPreview');
+      marcarEtapa(2);
+    }
+
+    function gravarQuantitativo() {
+      const coluna = document.getElementById('quantColuna').value;
+      if (!coluna) {
+        alert('Escolha em qual coluna do quantitativo essa clínica entra.');
+        return;
+      }
+      const btn = document.getElementById('btnGravarQuant');
+      btn.disabled = true;
+      btn.textContent = 'Gravando...';
+
+      const contagens = [];
+      quantAtual.secoes.forEach(secao => {
+        secao.itens.forEach(item => {
+          if (item.qtd > 0) {
+            contagens.push({ secao: secao.secao, id: item.id, nome: item.nome, qtd: item.qtd });
+          }
+        });
+      });
+
+      google.script.run
+        .withSuccessHandler(resposta => {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar e gravar tudo';
+          if (!resposta.sucesso) {
+            mostrarErro(resposta.erro || 'Erro ao gravar o quantitativo.');
+            return;
+          }
+          esconder('cardQuant');
+          let mensagem = resposta.itensGravados + ' item(ns) gravados na aba "' + resposta.aba +
+            '" (coluna ' + resposta.coluna + ')';
+          if (resposta.linhasBase > 0) {
+            mensagem += ' e ' + resposta.linhasBase + ' paciente(s) na aba Base';
+          }
+          mensagem += '.';
+          if (resposta.pendencias && resposta.pendencias.length > 0) {
+            mensagem += ' Pendências: ' + resposta.pendencias.join('; ');
+          }
+          document.getElementById('mensagemSucesso').textContent = mensagem;
+          mostrar('cardSucesso');
+          marcarEtapa(4);
+        })
+        .withFailureHandler(erro => {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar e gravar tudo';
+          mostrarErro('Erro ao gravar: ' + erro.message);
+        })
+        .salvarQuantitativo({
+          data: dadosAtuais.data,
+          clinica: dadosAtuais.clinica,
+          coluna: coluna,
+          contagens: contagens,
+          pacientes: dadosAtuais.pacientes,
+          regrasNovas: quantAtual.regrasNovas,
+          itensNovos: quantAtual.itensNovos
+        });
     }
 
     function mostrarErro(msg) {
