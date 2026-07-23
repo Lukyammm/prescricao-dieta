@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
   
   # Prescricao Dieta
 
@@ -10,50 +10,50 @@
 
 <br/>
 
-## ðŸŽ¯ VisÃ£o Geral
-**Prescricao Dieta** Ã© uma soluÃ§Ã£o focada na Ã¡rea da saÃºde e operaÃ§Ãµes clÃ­nicas. Este repositÃ³rio contÃ©m as ferramentas e os recursos necessÃ¡rios para melhorar processos, trazer clareza de dados e otimizar fluxos de trabalho. 
+## 🎯 Visão Geral
+**Prescricao Dieta** é uma solução focada na área da saúde e operações clínicas. Este repositório contém as ferramentas e os recursos necessários para melhorar processos, trazer clareza de dados e otimizar fluxos de trabalho. 
 
-> *Nota: Este projeto faz parte do portfÃ³lio de soluÃ§Ãµes clÃ­nicas e analÃ­ticas para gestÃ£o hospitalar e eficiÃªncia corporativa.*
-
----
-
-## âœ¨ Principais Recursos
-
-- **ðŸ“Š Dashboards AnalÃ­ticos:** VisualizaÃ§Ã£o clara e moderna de mÃ©tricas crÃ­ticas.
-- **âš™ï¸ OtimizaÃ§Ã£o de Processos:** Fluxos de trabalho digitais que reduzem o esforÃ§o burocrÃ¡tico.
-- **ðŸ¥ Foco ClÃ­nico/Hospitalar:** Desenvolvido visando a realidade das operaÃ§Ãµes de saÃºde.
-- **ðŸ”’ SeguranÃ§a e Qualidade:** Foco em compliance e melhoria contÃ­nua.
+> *Nota: Este projeto faz parte do portfólio de soluções clínicas e analíticas para gestão hospitalar e eficiência corporativa.*
 
 ---
 
-## ðŸ’» Tecnologias e Estrutura
+## ✨ Principais Recursos
 
-Este projeto utiliza prÃ¡ticas modernas de desenvolvimento para garantir manutenÃ§Ã£o simplificada e escalabilidade.
+- **📊 Dashboards Analíticos:** Visualização clara e moderna de métricas críticas.
+- **⚙️ Otimização de Processos:** Fluxos de trabalho digitais que reduzem o esforço burocrático.
+- **🏥 Foco Clínico/Hospitalar:** Desenvolvido visando a realidade das operações de saúde.
+- **🔒 Segurança e Qualidade:** Foco em compliance e melhoria contínua.
 
-- PadrÃµes visuais atualizados
-- Estrutura clara de diretÃ³rios
+---
+
+## 💻 Tecnologias e Estrutura
+
+Este projeto utiliza práticas modernas de desenvolvimento para garantir manutenção simplificada e escalabilidade.
+
+- Padrões visuais atualizados
+- Estrutura clara de diretórios
 - Foco em usabilidade
 
 ---
 
-## ðŸš€ Como ComeÃ§ar
+## 🚀 Como Começar
 
-1. Clone o repositÃ³rio:
-   `ash
+1. Clone o repositório:
+   ```bash
    git clone https://github.com/Lukyammm/prescricao-dieta.git
-   `
+   ```
 2. Acesse a pasta do projeto:
-   `ash
+   ```bash
    cd prescricao-dieta
-   `
-3. Consulte a documentaÃ§Ã£o interna para mais detalhes de configuraÃ§Ã£o e execuÃ§Ã£o.
+   ```
+3. Consulte a documentação interna para mais detalhes de configuração e execução.
 
 ---
 
-## ðŸ¤ Contato e ContribuiÃ§Ã£o
+## 🤝 Contato e Contribuição
 
-Feito com dedicaÃ§Ã£o por **Lukyam Madeira**.
-Sinta-se Ã  vontade para explorar, abrir *issues* para dÃºvidas ou sugerir melhorias.
+Feito com dedicação por **Lukyam Madeira**.
+Sinta-se à vontade para explorar, abrir *issues* para dúvidas ou sugerir melhorias.
 
 <div align="center">
   <a href="https://github.com/Lukyammm">
